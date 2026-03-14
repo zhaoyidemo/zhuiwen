@@ -99,6 +99,30 @@
 
           <div x-show="videoError" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="videoError"></div>
 
+          <!-- 历史记录 -->
+          <div x-show="!videoData && videoHistory.length" class="mb-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-medium text-gray-500">解析历史</h3>
+              <button @click="clearHistory" class="text-xs text-gray-400 hover:text-red-500">清空</button>
+            </div>
+            <div class="space-y-2">
+              <template x-for="h in videoHistory.slice(0, 10)" :key="h.aweme_id">
+                <div @click="loadFromHistory(h)" class="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-shadow">
+                  <img x-show="h.cover_url" :src="h.cover_url" class="w-16 h-12 rounded-lg object-cover shrink-0">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-800 line-clamp-1" x-text="h.desc || '(无描述)'"></p>
+                    <div class="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
+                      <span x-text="h.author_nickname"></span>
+                      <span x-show="h.play_count">▶ <span x-text="fmtNum(h.play_count)"></span></span>
+                      <span>❤ <span x-text="fmtNum(h.digg_count)"></span></span>
+                      <span class="font-medium" :class="rateColorClass(h.collect_rate)" x-text="fmtRate(h.collect_rate)"></span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
           <!-- 视频结果 -->
           <template x-if="videoData">
             <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -388,6 +412,7 @@ function app() {
     videoData: null,
     extendedData: null,
     extendedLoading: false,
+    videoHistory: JSON.parse(localStorage.getItem('zw_video_history') || '[]'),
 
     // 竞品雷达
     uniqueId: '',
@@ -430,8 +455,28 @@ function app() {
       this.videoLoading = true; this.videoError = ''; this.videoData = null; this.extendedData = null;
       try {
         this.videoData = await this.api('POST', '/video/parse', { url: this.videoUrl.trim() });
+        // 保存到历史记录（去重，最多保留50条）
+        if (this.videoData?.aweme_id) {
+          this.videoHistory = this.videoHistory.filter(v => v.aweme_id !== this.videoData.aweme_id);
+          this.videoHistory.unshift(this.videoData);
+          if (this.videoHistory.length > 50) this.videoHistory = this.videoHistory.slice(0, 50);
+          localStorage.setItem('zw_video_history', JSON.stringify(this.videoHistory));
+        }
       } catch (e) { this.videoError = e.message; }
       this.videoLoading = false;
+    },
+
+    // 从历史记录加载
+    loadFromHistory(v) {
+      this.videoData = v;
+      this.extendedData = null;
+      this.videoUrl = v.source_url || '';
+    },
+
+    // 清空历史
+    clearHistory() {
+      this.videoHistory = [];
+      localStorage.removeItem('zw_video_history');
     },
 
     // 加载深度分析数据
