@@ -63,7 +63,7 @@ async def index():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.0.4"}
 
 
 @app.post("/api/auth/verify")

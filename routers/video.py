@@ -1,6 +1,8 @@
 import logging
+import json
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 
 from models.schemas import VideoParseRequest, VideoData
 from services import tikhub_service, feishu_service
@@ -30,23 +32,27 @@ async def parse_video(req: VideoParseRequest):
 @router.get("/{aweme_id}/extended")
 async def get_video_extended(aweme_id: str):
     """获取视频扩展数据：数据趋势、评论词云、弹幕"""
+    result = {"trends": [], "word_cloud": [], "danmaku": []}
     try:
         trends = await tikhub_service.fetch_video_trends(aweme_id)
+        if isinstance(trends, list):
+            result["trends"] = trends
     except Exception as e:
         logger.warning(f"趋势数据获取失败: {e}")
-        trends = []
     try:
         word_cloud = await tikhub_service.fetch_comment_word_cloud(aweme_id)
+        if isinstance(word_cloud, list):
+            result["word_cloud"] = word_cloud
     except Exception as e:
         logger.warning(f"词云数据获取失败: {e}")
-        word_cloud = []
     try:
         danmaku = await tikhub_service.fetch_video_danmaku(aweme_id)
+        if isinstance(danmaku, list):
+            result["danmaku"] = danmaku
     except Exception as e:
         logger.warning(f"弹幕数据获取失败: {e}")
-        danmaku = []
-    logger.info(f"Extended data: trends={len(trends)}, word_cloud={len(word_cloud)}, danmaku={len(danmaku)}")
-    return {"trends": trends, "word_cloud": word_cloud, "danmaku": danmaku}
+    logger.info(f"Extended: trends={len(result['trends'])}, wc={len(result['word_cloud'])}, dm={len(result['danmaku'])}")
+    return JSONResponse(content=result)
 
 
 @router.get("/{aweme_id}", response_model=VideoData)
