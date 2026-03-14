@@ -241,7 +241,7 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
     """分页获取用户视频列表"""
     data = await _request(
         "GET",
-        "/api/v1/douyin/web/fetch_user_post_videos",
+        "/api/v1/douyin/app/v3/fetch_user_post_videos",
         params={"sec_user_id": sec_user_id, "max_cursor": max_cursor, "count": count},
     )
 
