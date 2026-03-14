@@ -246,17 +246,31 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
     )
 
     result_data = data.get("data", {})
+    # TikHub 可能多层嵌套: data.data.aweme_list
     if isinstance(result_data, dict):
         aweme_list = result_data.get("aweme_list", []) or []
+        # 如果 aweme_list 为空，尝试内层 data
+        if not aweme_list and isinstance(result_data.get("data"), dict):
+            inner = result_data["data"]
+            aweme_list = inner.get("aweme_list", []) or []
+            has_more = inner.get("has_more", False)
+            next_cursor = inner.get("max_cursor", 0)
+        else:
+            has_more = result_data.get("has_more", False)
+            next_cursor = result_data.get("max_cursor", 0)
     else:
         aweme_list = []
-    has_more = result_data.get("has_more", False) if isinstance(result_data, dict) else False
-    next_cursor = result_data.get("max_cursor", 0) if isinstance(result_data, dict) else 0
+        has_more = False
+        next_cursor = 0
 
-    # 日志：看第一个视频的 statistics 字段
+    # 日志：看数据结构
     if aweme_list and isinstance(aweme_list[0], dict):
-        first_stats = aweme_list[0].get("statistics", {})
-        logger.info(f"第一个视频 statistics: {first_stats}")
+        first = aweme_list[0]
+        first_stats = first.get("statistics", {})
+        logger.info(f"视频数据结构: statistics={first_stats}, desc={str(first.get('desc',''))[:30]}")
+    else:
+        rd_keys = list(result_data.keys()) if isinstance(result_data, dict) else type(result_data).__name__
+        logger.info(f"result_data keys: {rd_keys}, aweme_list len={len(aweme_list)}")
 
     videos = [_parse_video_data(item) for item in aweme_list if isinstance(item, dict)]
 
