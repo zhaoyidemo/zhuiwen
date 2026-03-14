@@ -263,8 +263,8 @@ async def fetch_video_statistics(aweme_id: str) -> dict:
     """获取视频真实播放量统计（参数为 aweme_ids，支持批量）"""
     try:
         data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_ids": aweme_id})
-        logger.info(f"statistics 原始返回: {list(data.keys()) if isinstance(data, dict) else type(data)}")
         result = data.get("data", {})
+        logger.info(f"statistics data 字段类型={type(result).__name__}, 内容={str(result)[:500]}")
         # 返回可能是列表或字典
         if isinstance(result, list) and result:
             stats = result[0].get("statistics", result[0]) if isinstance(result[0], dict) else {}
@@ -351,7 +351,7 @@ async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) 
     """获取视频评论"""
     data = await _request(
         "GET",
-        "/api/v1/douyin/web/fetch_one_video_comment",
+        "/api/v1/douyin/web/fetch_video_comments",
         params={"aweme_id": aweme_id, "cursor": cursor, "count": count},
     )
     result_data = data.get("data", {})

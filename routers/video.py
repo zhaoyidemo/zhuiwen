@@ -41,14 +41,13 @@ async def get_video_extended(aweme_id: str, duration: int = 0):
     except Exception as e:
         logger.warning(f"评论获取失败: {e}")
 
-    # 拉取弹幕（需要 duration 参数）
-    if duration > 0:
-        try:
-            danmaku = await tikhub_service.fetch_video_danmaku(aweme_id, duration=duration)
-            if isinstance(danmaku, list):
-                result["danmaku"] = danmaku
-        except Exception as e:
-            logger.warning(f"弹幕获取失败: {e}")
+    # 拉取弹幕
+    try:
+        danmaku = await tikhub_service.fetch_video_danmaku(aweme_id, duration=duration)
+        if isinstance(danmaku, list):
+            result["danmaku"] = danmaku
+    except Exception as e:
+        logger.warning(f"弹幕获取失败: {e}")
 
     logger.info(f"Extended: comments={len(result['comments'])}, danmaku={len(result['danmaku'])}")
     return JSONResponse(content=result)
