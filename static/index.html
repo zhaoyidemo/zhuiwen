@@ -261,8 +261,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8" x-show="accounts.length">
             <template x-for="acc in accounts" :key="acc.account_id || acc.unique_id">
               <div @click="selectAccount(acc)"
-                class="bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md"
+                class="bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md relative group"
                 :class="selectedAccount?.account_id === acc.account_id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200'">
+                <!-- 删除按钮 -->
+                <button @click.stop="removeAccount(acc)"
+                  class="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs">×</button>
                 <div class="flex items-center gap-3 mb-3">
                   <img x-show="acc.avatar_url" :src="acc.avatar_url" class="w-12 h-12 rounded-full">
                   <div class="w-12 h-12 bg-gray-200 rounded-full" x-show="!acc.avatar_url"></div>
@@ -276,14 +279,19 @@
                   <div><p class="font-semibold text-gray-700" x-text="acc.video_count"></p><p class="text-gray-400">作品</p></div>
                   <div><p class="font-semibold text-gray-700" x-text="fmtNum(acc.total_favorited)"></p><p class="text-gray-400">获赞</p></div>
                 </div>
+                <!-- 同步后的汇总数据 -->
+                <div x-show="acc._synced" class="grid grid-cols-2 gap-2 text-center text-xs mb-3 pt-2 border-t border-gray-100">
+                  <div><p class="font-semibold" :class="rateColorClass(acc._avgCollectRate)" x-text="fmtRate(acc._avgCollectRate)"></p><p class="text-gray-400">平均收藏率</p></div>
+                  <div><p class="font-semibold" :class="rateColorClass(acc._topCollectRate)" x-text="fmtRate(acc._topCollectRate)"></p><p class="text-gray-400">最高收藏率</p></div>
+                </div>
                 <div class="flex items-center justify-between">
                   <span class="text-[10px] px-2 py-0.5 rounded"
                     :class="acc.category==='竞品' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'"
-                    x-text="acc.category"></span>
+                    x-text="acc.category + (acc._synced ? ' · ' + acc._synced + '条' : '')"></span>
                   <button @click.stop="syncAccount(acc)" :disabled="syncingId === acc.sec_user_id"
                     class="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300">
                     <svg :class="syncingId === acc.sec_user_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                    同步视频
+                    <span x-text="acc._synced ? '刷新' : '同步视频'"></span>
                   </button>
                 </div>
               </div>
@@ -297,33 +305,42 @@
                 <span x-text="selectedAccount?.nickname"></span> 的视频
                 <span class="text-sm text-gray-400 font-normal ml-2">共 <span x-text="competitorVideos.length"></span> 条</span>
               </h3>
-              <select x-model="sortBy" @change="sortVideos" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
-                <option value="collect_rate">收藏率</option>
-                <option value="digg_count">点赞数</option>
-                <option value="comment_count">评论数</option>
-                <option value="play_count">播放量</option>
-                <option value="create_time">发布时间</option>
-              </select>
+              <div class="flex items-center gap-2">
+                <select x-model="sortBy" @change="sortVideos" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+                  <option value="collect_rate">收藏率</option>
+                  <option value="digg_count">点赞数</option>
+                  <option value="comment_count">评论数</option>
+                  <option value="collect_count">收藏数</option>
+                  <option value="share_count">转发数</option>
+                  <option value="play_count">播放量</option>
+                  <option value="duration">时长</option>
+                  <option value="create_time">发布时间</option>
+                </select>
+              </div>
             </div>
             <div class="space-y-3">
-              <template x-for="v in competitorVideos" :key="v.aweme_id">
+              <template x-for="(v, idx) in competitorVideos" :key="v.aweme_id">
                 <div class="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow"
                   :class="v.collect_rate >= 0.03 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200'">
                   <div class="flex">
-                    <div class="w-32 h-24 shrink-0 bg-gray-100" x-show="v.cover_url">
+                    <div class="w-32 h-24 shrink-0 bg-gray-100 relative" x-show="v.cover_url">
                       <img :src="v.cover_url" class="w-full h-full object-cover" loading="lazy">
+                      <span class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 rounded" x-show="v.duration" x-text="fmtDuration(v.duration)"></span>
+                      <span class="absolute top-1 left-1 bg-black/50 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full" x-text="idx + 1"></span>
                     </div>
                     <div class="flex-1 p-3 min-w-0">
                       <p class="text-gray-800 text-sm line-clamp-2 mb-1" x-text="v.desc || '(无描述)'"></p>
                       <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
                         <span x-text="v.create_time"></span>
-                        <span x-show="v.is_co_creation" class="text-purple-500">🤝 共创</span>
+                        <span x-show="v.is_co_creation" class="text-purple-500">共创</span>
+                        <span x-show="v.tags" class="text-blue-400 truncate max-w-[200px]" x-text="v.tags"></span>
                       </div>
                       <div class="flex flex-wrap gap-3 text-xs text-gray-500">
                         <span>▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
                         <span>❤ <span x-text="fmtNum(v.digg_count)" class="tabular-nums"></span></span>
                         <span>💬 <span x-text="fmtNum(v.comment_count)" class="tabular-nums"></span></span>
                         <span>⭐ <span x-text="fmtNum(v.collect_count)" class="tabular-nums"></span></span>
+                        <span>↗ <span x-text="fmtNum(v.share_count)" class="tabular-nums"></span></span>
                         <span class="font-semibold" :class="rateColorClass(v.collect_rate)">收藏率 <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span></span>
                       </div>
                     </div>
@@ -366,7 +383,7 @@ function app() {
     // 竞品雷达
     uniqueId: '',
     accountCategory: '竞品',
-    accounts: [],
+    accounts: JSON.parse(localStorage.getItem('zw_accounts') || '[]'),
     addingAccount: false,
     accountError: '',
     syncingId: null,
@@ -432,16 +449,34 @@ function app() {
       this.extendedLoading = false;
     },
 
+    // 保存账号到 localStorage
+    saveAccounts() { localStorage.setItem('zw_accounts', JSON.stringify(this.accounts)); },
+
     // 添加账号
     async addAccount() {
       if (!this.uniqueId.trim()) return;
+      // 检查重复
+      if (this.accounts.some(a => a.unique_id === this.uniqueId.trim())) {
+        this.accountError = '该账号已添加'; return;
+      }
       this.addingAccount = true; this.accountError = '';
       try {
         const acc = await this.api('POST', '/account/add', { unique_id: this.uniqueId.trim(), category: this.accountCategory });
         this.accounts.push(acc);
+        this.saveAccounts();
         this.uniqueId = '';
       } catch (e) { this.accountError = e.message; }
       this.addingAccount = false;
+    },
+
+    // 删除账号
+    removeAccount(acc) {
+      this.accounts = this.accounts.filter(a => a.account_id !== acc.account_id);
+      this.saveAccounts();
+      if (this.selectedAccount?.account_id === acc.account_id) {
+        this.selectedAccount = null;
+        this.competitorVideos = [];
+      }
     },
 
     // 同步视频
@@ -451,6 +486,13 @@ function app() {
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
         this.selectedAccount = acc;
         this.competitorVideos = result.videos || [];
+        // 计算汇总数据
+        const vids = this.competitorVideos;
+        acc._synced = vids.length;
+        acc._avgCollectRate = vids.length ? vids.reduce((s, v) => s + (v.collect_rate || 0), 0) / vids.length : 0;
+        acc._topCollectRate = vids.length ? Math.max(...vids.map(v => v.collect_rate || 0)) : 0;
+        acc._totalDigg = vids.reduce((s, v) => s + (v.digg_count || 0), 0);
+        this.saveAccounts();
         this.sortVideos();
       } catch (e) { this.accountError = e.message; }
       this.syncingId = null;

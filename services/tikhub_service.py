@@ -194,7 +194,7 @@ async def parse_and_fetch_video(url: str) -> VideoData:
 
 async def fetch_user_profile(unique_id: str) -> AccountData:
     """获取用户信息"""
-    data = await _request("GET", "/api/v1/douyin/web/fetch_user_profile", params={"uniqueId": unique_id})
+    data = await _request("GET", "/api/v1/douyin/web/handler_user_profile_v2", params={"unique_id": unique_id})
     logger.info(f"TikHub user profile response keys: {list(data.keys())}")
 
     user_data = data.get("data", {})
@@ -228,7 +228,7 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
     data = await _request(
         "GET",
         "/api/v1/douyin/web/fetch_user_post_videos",
-        params={"secUid": sec_user_id, "max_cursor": max_cursor, "count": count},
+        params={"sec_user_id": sec_user_id, "max_cursor": max_cursor, "count": count},
     )
 
     result_data = data.get("data", {})
