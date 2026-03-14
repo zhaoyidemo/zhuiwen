@@ -200,9 +200,20 @@ async def fetch_user_profile(unique_id: str) -> AccountData:
     user_data = data.get("data", {})
     # handler_user_profile_v2 结构: data.data.user_info
     user_info = user_data.get("user_info", {}) or user_data.get("user", {}) or user_data
-    stats = user_info.get("statistics", {}) or {}
+    logger.info(f"user_info 全部字段: {list(user_info.keys()) if isinstance(user_info, dict) else type(user_info)}")
 
-    avatar = user_info.get("avatar_thumb", {}) or user_info.get("avatar_medium", {}) or {}
+    # 粉丝等数据可能在顶层或 statistics 子对象中
+    stats = user_info.get("statistics", {}) or {}
+    # 有些接口用 mplatform_followers_count
+    follower = (user_info.get("follower_count") or user_info.get("mplatform_followers_count")
+                or stats.get("follower_count") or 0)
+    following = user_info.get("following_count") or stats.get("following_count") or 0
+    favorited = (user_info.get("total_favorited") or user_info.get("favoriting_count")
+                 or stats.get("total_favorited") or 0)
+    aweme_count = user_info.get("aweme_count") or stats.get("aweme_count") or 0
+
+    # 头像：可能是 dict{url_list} 或直接 string
+    avatar = user_info.get("avatar_larger", {}) or user_info.get("avatar_medium", {}) or user_info.get("avatar_thumb", {}) or {}
     avatar_url = ""
     if isinstance(avatar, dict):
         url_list = avatar.get("url_list", [])
@@ -210,16 +221,18 @@ async def fetch_user_profile(unique_id: str) -> AccountData:
     elif isinstance(avatar, str):
         avatar_url = avatar
 
+    logger.info(f"解析结果: nickname={user_info.get('nickname')}, sec_uid={user_info.get('sec_uid')}, follower={follower}")
+
     return AccountData(
         account_id=str(user_info.get("uid", "")),
         sec_user_id=user_info.get("sec_uid", ""),
         unique_id=user_info.get("unique_id", "") or unique_id,
         nickname=user_info.get("nickname", ""),
         avatar_url=avatar_url,
-        follower_count=user_info.get("follower_count", 0) or stats.get("follower_count", 0) or 0,
-        following_count=user_info.get("following_count", 0) or stats.get("following_count", 0) or 0,
-        total_favorited=user_info.get("total_favorited", 0) or stats.get("total_favorited", 0) or 0,
-        video_count=user_info.get("aweme_count", 0) or stats.get("aweme_count", 0) or 0,
+        follower_count=int(follower) if follower else 0,
+        following_count=int(following) if following else 0,
+        total_favorited=int(favorited) if favorited else 0,
+        video_count=int(aweme_count) if aweme_count else 0,
         signature=user_info.get("signature", ""),
     )
 
@@ -247,7 +260,7 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
 
 
 async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
-    """拉取用户全部视频（自动分页）"""
+    """拉取用户全部视频（自动分页），然后批量补充播放量"""
     all_videos = []
     cursor = 0
     while True:
@@ -257,7 +270,34 @@ async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
         if not result["has_more"]:
             break
         cursor = result["next_cursor"]
+
+    # 批量补充播放量（每次最多20个）
+    await _batch_fill_play_count(all_videos)
     return all_videos
+
+
+async def _batch_fill_play_count(videos: list[VideoData]):
+    """批量调用 fetch_video_statistics 补充播放量"""
+    need_fill = [v for v in videos if v.play_count == 0 and v.aweme_id]
+    if not need_fill:
+        return
+    # 每批20个
+    for i in range(0, len(need_fill), 20):
+        batch = need_fill[i:i+20]
+        ids = ",".join(v.aweme_id for v in batch)
+        try:
+            data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_ids": ids})
+            stats_list = data.get("data", {}).get("statistics_list", []) or []
+            stats_map = {str(s.get("aweme_id", "")): s for s in stats_list if isinstance(s, dict)}
+            for v in batch:
+                s = stats_map.get(v.aweme_id, {})
+                play = s.get("play_count", 0) or 0
+                if play > 0:
+                    v.play_count = play
+                    v.collect_rate = round(v.collect_count / play, 6) if play > 0 else 0.0
+            logger.info(f"批量补充播放量: {len(batch)}条, 成功{len(stats_map)}条")
+        except Exception as e:
+            logger.warning(f"批量获取统计失败: {e}")
 
 
 async def fetch_video_statistics(aweme_id: str) -> dict:
