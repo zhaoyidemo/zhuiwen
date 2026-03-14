@@ -531,6 +531,65 @@ async def fetch_kol_hot_comment_keywords(kol_id: str) -> dict:
         return {}
 
 
+async def fetch_kol_base_info(kol_id: str) -> dict:
+    """获取 KOL 基本信息（简介、标签、认证等）"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_base_info_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取KOL基本信息失败: {e}")
+        return {}
+
+
+async def fetch_kol_service_price(kol_id: str) -> dict:
+    """获取 KOL 商单报价"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取商单报价失败: {e}")
+        return {}
+
+
+async def fetch_kol_cp_info(kol_id: str) -> dict:
+    """获取 KOL 性价比分析"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_cp_info_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取性价比分析失败: {e}")
+        return {}
+
+
+async def fetch_kol_conversion_ability(kol_id: str, _range: str = '') -> dict:
+    """获取 KOL 转化能力分析"""
+    try:
+        params = {"kolId": kol_id}
+        if _range:
+            params["_range"] = _range
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_conversion_ability_analysis_v1",
+                              params=params)
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取转化能力分析失败: {e}")
+        return {}
+
+
 async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) -> dict:
     """获取视频评论"""
     data = await _request(

@@ -347,11 +347,38 @@
                 <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
               </div>
 
+              <!-- KOL 基本信息卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">基本信息</h4>
+                <div class="space-y-3">
+                  <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.base_info[key] === 'string' || typeof xingtuData.base_info[key] === 'number'">
+                        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-gray-800" x-text="xingtuData.base_info[key]"></span>
+                        </div>
+                      </template>
+                      <template x-if="Array.isArray(xingtuData.base_info[key]) && xingtuData.base_info[key].length > 0">
+                        <div class="py-2 px-3 bg-gray-50 rounded-lg">
+                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
+                          <div class="flex flex-wrap gap-2">
+                            <template x-for="(item, idx) in xingtuData.base_info[key]" :key="idx">
+                              <span class="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full text-xs" x-text="typeof item === 'object' ? (item.name || item.label || JSON.stringify(item)) : item"></span>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <!-- 星图指数卡片 -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {})" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
                     <div class="text-center p-3 bg-purple-50 rounded-xl">
                       <template x-if="typeof xingtuData.xingtu_index[key] === 'number' || typeof xingtuData.xingtu_index[key] === 'string'">
                         <div>
@@ -364,42 +391,207 @@
                 </div>
               </div>
 
-              <!-- 粉丝画像卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && Object.keys(xingtuData.fans_portrait).length">
+              <!-- 粉丝画像卡片（distributions 条形图模式） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && (xingtuData.fans_portrait.distributions || Object.keys(xingtuData.fans_portrait).length)">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝画像</h4>
-                <div class="space-y-4">
-                  <template x-for="key in Object.keys(xingtuData.fans_portrait || {})" :key="key">
-                    <div>
-                      <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                      <!-- 数组类型 -->
-                      <template x-if="Array.isArray(xingtuData.fans_portrait[key])">
-                        <div class="flex flex-wrap gap-2">
-                          <template x-for="(item, idx) in xingtuData.fans_portrait[key].slice(0, 10)" :key="idx">
-                            <span class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs">
-                              <template x-if="typeof item === 'object' && item !== null">
-                                <span x-text="Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ')"></span>
-                              </template>
-                              <template x-if="typeof item !== 'object'">
-                                <span x-text="item"></span>
-                              </template>
-                            </span>
+                <!-- distributions 数组专用渲染 -->
+                <template x-if="Array.isArray(xingtuData.fans_portrait?.distributions)">
+                  <div class="space-y-6">
+                    <template x-for="(dist, dIdx) in xingtuData.fans_portrait.distributions" :key="dIdx">
+                      <div class="bg-blue-50/50 rounded-xl p-4">
+                        <h5 class="text-sm font-semibold text-gray-800 mb-1" x-text="dist.type_display || '分布'"></h5>
+                        <p class="text-xs text-gray-500 mb-3" x-show="dist.description" x-text="dist.description"></p>
+                        <div class="space-y-2">
+                          <template x-for="(item, iIdx) in (dist.distribution_list || [])" :key="iIdx">
+                            <div class="flex items-center gap-3">
+                              <span class="text-xs text-gray-600 w-16 shrink-0 text-right" x-text="item.key"></span>
+                              <div class="flex-1 bg-blue-100 rounded-full h-5 overflow-hidden">
+                                <div class="h-full bg-blue-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                                  :style="'width:' + Math.max(item.value || 0, 2) + '%'">
+                                  <span class="text-[10px] text-white font-medium" x-show="item.value >= 10" x-text="item.value + '%'"></span>
+                                </div>
+                              </div>
+                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums" x-show="item.value < 10" x-text="item.value + '%'"></span>
+                              <span class="w-10 shrink-0" x-show="item.value >= 10"></span>
+                            </div>
                           </template>
                         </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <!-- 兜底：非 distributions 结构 -->
+                <template x-if="!Array.isArray(xingtuData.fans_portrait?.distributions)">
+                  <div class="space-y-4">
+                    <template x-for="key in Object.keys(xingtuData.fans_portrait || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                      <div>
+                        <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                        <template x-if="typeof xingtuData.fans_portrait[key] !== 'object'">
+                          <p class="text-sm text-gray-700" x-text="xingtuData.fans_portrait[key]"></p>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 观众画像卡片（distributions 条形图模式） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && (xingtuData.audience_portrait.distributions || Object.keys(xingtuData.audience_portrait).length)">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">观众画像</h4>
+                <!-- distributions 数组专用渲染 -->
+                <template x-if="Array.isArray(xingtuData.audience_portrait?.distributions)">
+                  <div class="space-y-6">
+                    <template x-for="(dist, dIdx) in xingtuData.audience_portrait.distributions" :key="dIdx">
+                      <div class="bg-emerald-50/50 rounded-xl p-4">
+                        <h5 class="text-sm font-semibold text-gray-800 mb-1" x-text="dist.type_display || '分布'"></h5>
+                        <p class="text-xs text-gray-500 mb-3" x-show="dist.description" x-text="dist.description"></p>
+                        <div class="space-y-2">
+                          <template x-for="(item, iIdx) in (dist.distribution_list || [])" :key="iIdx">
+                            <div class="flex items-center gap-3">
+                              <span class="text-xs text-gray-600 w-16 shrink-0 text-right" x-text="item.key"></span>
+                              <div class="flex-1 bg-emerald-100 rounded-full h-5 overflow-hidden">
+                                <div class="h-full bg-emerald-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                                  :style="'width:' + Math.max(item.value || 0, 2) + '%'">
+                                  <span class="text-[10px] text-white font-medium" x-show="item.value >= 10" x-text="item.value + '%'"></span>
+                                </div>
+                              </div>
+                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums" x-show="item.value < 10" x-text="item.value + '%'"></span>
+                              <span class="w-10 shrink-0" x-show="item.value >= 10"></span>
+                            </div>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+                <!-- 兜底：非 distributions 结构 -->
+                <template x-if="!Array.isArray(xingtuData.audience_portrait?.distributions)">
+                  <div class="space-y-4">
+                    <template x-for="key in Object.keys(xingtuData.audience_portrait || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                      <div>
+                        <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                        <template x-if="typeof xingtuData.audience_portrait[key] !== 'object'">
+                          <p class="text-sm text-gray-700" x-text="xingtuData.audience_portrait[key]"></p>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 商单报价卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
+                <div class="space-y-2">
+                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.service_price[key] === 'number' || typeof xingtuData.service_price[key] === 'string'">
+                        <div class="flex items-center justify-between py-2.5 px-4 bg-amber-50 rounded-lg">
+                          <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-bold tabular-nums"
+                            :class="key.includes('price') || key.includes('quote') || key.includes('cpm') ? 'text-amber-600 text-base' : 'text-gray-800'"
+                            x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : xingtuData.service_price[key]"></span>
+                        </div>
                       </template>
-                      <!-- 对象类型 -->
-                      <template x-if="typeof xingtuData.fans_portrait[key] === 'object' && !Array.isArray(xingtuData.fans_portrait[key]) && xingtuData.fans_portrait[key] !== null">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                          <template x-for="subKey in Object.keys(xingtuData.fans_portrait[key])" :key="subKey">
-                            <div class="text-center p-2 bg-gray-50 rounded-lg">
-                              <p class="text-sm font-semibold text-gray-700" x-text="xingtuData.fans_portrait[key][subKey]"></p>
-                              <p class="text-[10px] text-gray-400" x-text="xingtuLabel(subKey)"></p>
+                      <template x-if="typeof xingtuData.service_price[key] === 'object' && xingtuData.service_price[key] !== null">
+                        <div class="py-2.5 px-4 bg-amber-50 rounded-lg">
+                          <p class="text-sm text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                          <template x-if="Array.isArray(xingtuData.service_price[key])">
+                            <div class="space-y-1">
+                              <template x-for="(item, idx) in xingtuData.service_price[key].slice(0, 10)" :key="idx">
+                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ') : item"></p>
+                              </template>
+                            </div>
+                          </template>
+                          <template x-if="!Array.isArray(xingtuData.service_price[key])">
+                            <div class="space-y-1">
+                              <template x-for="subKey in Object.keys(xingtuData.service_price[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
+                                <div class="flex items-center justify-between">
+                                  <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
+                                  <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.service_price[key][subKey]"></span>
+                                </div>
+                              </template>
                             </div>
                           </template>
                         </div>
                       </template>
-                      <!-- 简单值 -->
-                      <template x-if="typeof xingtuData.fans_portrait[key] !== 'object' && !Array.isArray(xingtuData.fans_portrait[key])">
-                        <p class="text-sm text-gray-700" x-text="xingtuData.fans_portrait[key]"></p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 性价比分析卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
+                <div class="space-y-2">
+                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.cp_info[key] === 'number' || typeof xingtuData.cp_info[key] === 'string'">
+                        <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
+                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-indigo-700 tabular-nums" x-text="typeof xingtuData.cp_info[key] === 'number' ? fmtNum(xingtuData.cp_info[key]) : xingtuData.cp_info[key]"></span>
+                        </div>
+                      </template>
+                      <template x-if="typeof xingtuData.cp_info[key] === 'object' && xingtuData.cp_info[key] !== null">
+                        <div class="py-2 px-3 bg-indigo-50 rounded-lg">
+                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
+                          <template x-if="Array.isArray(xingtuData.cp_info[key])">
+                            <div class="space-y-1">
+                              <template x-for="(item, idx) in xingtuData.cp_info[key].slice(0, 10)" :key="idx">
+                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ') : item"></p>
+                              </template>
+                            </div>
+                          </template>
+                          <template x-if="!Array.isArray(xingtuData.cp_info[key])">
+                            <div class="space-y-1">
+                              <template x-for="subKey in Object.keys(xingtuData.cp_info[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
+                                <div class="flex items-center justify-between">
+                                  <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
+                                  <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.cp_info[key][subKey]"></span>
+                                </div>
+                              </template>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 转化能力卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.conversion_ability && Object.keys(xingtuData.conversion_ability).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">转化能力</h4>
+                <div class="space-y-2">
+                  <template x-for="key in Object.keys(xingtuData.conversion_ability || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.conversion_ability[key] === 'number' || typeof xingtuData.conversion_ability[key] === 'string'">
+                        <div class="flex items-center justify-between py-2 px-3 bg-rose-50 rounded-lg">
+                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-rose-700 tabular-nums" x-text="typeof xingtuData.conversion_ability[key] === 'number' ? fmtNum(xingtuData.conversion_ability[key]) : xingtuData.conversion_ability[key]"></span>
+                        </div>
+                      </template>
+                      <template x-if="typeof xingtuData.conversion_ability[key] === 'object' && xingtuData.conversion_ability[key] !== null">
+                        <div class="py-2 px-3 bg-rose-50 rounded-lg">
+                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
+                          <template x-if="Array.isArray(xingtuData.conversion_ability[key])">
+                            <div class="space-y-1">
+                              <template x-for="(item, idx) in xingtuData.conversion_ability[key].slice(0, 10)" :key="idx">
+                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ') : item"></p>
+                              </template>
+                            </div>
+                          </template>
+                          <template x-if="!Array.isArray(xingtuData.conversion_ability[key])">
+                            <div class="space-y-1">
+                              <template x-for="subKey in Object.keys(xingtuData.conversion_ability[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
+                                <div class="flex items-center justify-between">
+                                  <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
+                                  <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.conversion_ability[key][subKey]"></span>
+                                </div>
+                              </template>
+                            </div>
+                          </template>
+                        </div>
                       </template>
                     </div>
                   </template>
@@ -425,7 +617,7 @@
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">数据概览</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.data_overview || {})" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.data_overview[key] === 'number' || typeof xingtuData.data_overview[key] === 'string'">
                         <div class="text-center p-3 bg-gray-50 rounded-xl">
@@ -486,7 +678,7 @@
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">视频表现</h4>
                 <div class="space-y-3">
-                  <template x-for="key in Object.keys(xingtuData.video_performance || {})" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.video_performance[key] === 'number' || typeof xingtuData.video_performance[key] === 'string'">
                         <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
@@ -503,45 +695,6 @@
                             </template>
                           </div>
                         </div>
-                      </template>
-                    </div>
-                  </template>
-                </div>
-              </div>
-
-              <!-- 观众画像 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && Object.keys(xingtuData.audience_portrait).length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">观众画像</h4>
-                <div class="space-y-4">
-                  <template x-for="key in Object.keys(xingtuData.audience_portrait || {})" :key="key">
-                    <div>
-                      <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                      <template x-if="Array.isArray(xingtuData.audience_portrait[key])">
-                        <div class="flex flex-wrap gap-2">
-                          <template x-for="(item, idx) in xingtuData.audience_portrait[key].slice(0, 10)" :key="idx">
-                            <span class="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">
-                              <template x-if="typeof item === 'object' && item !== null">
-                                <span x-text="Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ')"></span>
-                              </template>
-                              <template x-if="typeof item !== 'object'">
-                                <span x-text="item"></span>
-                              </template>
-                            </span>
-                          </template>
-                        </div>
-                      </template>
-                      <template x-if="typeof xingtuData.audience_portrait[key] === 'object' && !Array.isArray(xingtuData.audience_portrait[key]) && xingtuData.audience_portrait[key] !== null">
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                          <template x-for="subKey in Object.keys(xingtuData.audience_portrait[key])" :key="subKey">
-                            <div class="text-center p-2 bg-gray-50 rounded-lg">
-                              <p class="text-sm font-semibold text-gray-700" x-text="xingtuData.audience_portrait[key][subKey]"></p>
-                              <p class="text-[10px] text-gray-400" x-text="xingtuLabel(subKey)"></p>
-                            </div>
-                          </template>
-                        </div>
-                      </template>
-                      <template x-if="typeof xingtuData.audience_portrait[key] !== 'object'">
-                        <p class="text-sm text-gray-700" x-text="xingtuData.audience_portrait[key]"></p>
                       </template>
                     </div>
                   </template>
@@ -909,6 +1062,16 @@ function app() {
         'name': '名称', 'value': '值', 'rate': '比例', 'percentage': '占比',
         'kolId': 'KOL ID', 'kol_id': 'KOL ID',
         'flowType': '流量类型', 'onlyAssign': '仅任务',
+        'price_info': '报价信息', 'quote_price': '报价', 'cpm': 'CPM',
+        'service_price': '服务报价', 'base_info': '基本信息',
+        'conversion_rate': '转化率', 'roi': 'ROI',
+        'fans_online_trend': '粉丝活跃时段',
+        'type_display': '类型', 'distribution_list': '分布',
+        'key': '名称', 'description': '描述',
+        'nick_name': '昵称', 'tags': '标签', 'verify_name': '认证',
+        'core_user_id': '核心用户ID', 'unique_id': '抖音号',
+        '1_20_video': '1-20视频', '21_60_video': '21-60视频',
+        'follower_count': '粉丝数', 'total_favorited': '总获赞',
       };
       return labels[key] || key.replace(/_/g, ' ');
     },
