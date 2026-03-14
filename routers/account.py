@@ -99,9 +99,20 @@ async def get_account_xingtu(sec_user_id: str):
     """获取账号的星图（Xingtu）分析数据"""
     # 第一步：获取 kolId
     kol_result = await tikhub_service.fetch_xingtu_kol_id(sec_user_id)
+    logger.info(f"星图 kolId 原始返回: {kol_result}")
+    # 尝试多种路径提取 kolId
     kol_id = ""
     if isinstance(kol_result, dict):
-        kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "") or "")
+        kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "")
+                     or kol_result.get("kolid", "") or kol_result.get("id", "") or "")
+        # 可能 kolId 在嵌套字段中
+        if not kol_id:
+            for v in kol_result.values():
+                if isinstance(v, (str, int)) and v:
+                    kol_id = str(v)
+                    break
+    elif isinstance(kol_result, (str, int)) and kol_result:
+        kol_id = str(kol_result)
     if not kol_id:
         return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": "", "raw": kol_result})
 
