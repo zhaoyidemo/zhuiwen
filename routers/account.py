@@ -102,12 +102,15 @@ async def get_account_xingtu(sec_user_id: str):
     logger.info(f"星图 kolId 原始返回: {kol_result}")
     kol_id = ""
     if isinstance(kol_result, dict):
-        # 先检查是否是错误响应
-        if kol_result.get("status_code") and kol_result.get("status_code") != 0:
-            msg = kol_result.get("status_message_zh") or kol_result.get("status_message") or "未知错误"
+        # 先检查是否是错误响应（status_code 可能在顶层或 base_resp 中）
+        base_resp = kol_result.get("base_resp", {})
+        sc = kol_result.get("status_code", base_resp.get("status_code", 0))
+        if sc and sc != 0 and not kol_result.get("id"):
+            msg = (kol_result.get("status_message_zh") or kol_result.get("status_message")
+                   or base_resp.get("status_message") or "未知错误")
             return JSONResponse(content={"error": f"该账号未加入星图: {msg}", "kol_id": ""})
         kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "")
-                     or kol_result.get("kolid", "") or "")
+                     or kol_result.get("kolid", "") or kol_result.get("id", "") or "")
     elif isinstance(kol_result, (str, int)) and kol_result:
         kol_id = str(kol_result)
     if not kol_id:
