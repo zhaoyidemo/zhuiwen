@@ -1,0 +1,88 @@
+import logging
+
+from fastapi import APIRouter, HTTPException, Query
+
+from models.schemas import AccountAddRequest, AccountData
+from services import tikhub_service, feishu_service
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/account", tags=["账号"])
+
+
+@router.post("/add", response_model=AccountData)
+async def add_account(req: AccountAddRequest):
+    """添加竞品账号"""
+    try:
+        account = await tikhub_service.fetch_user_profile(req.unique_id)
+    except Exception as e:
+        logger.error(f"获取用户信息失败: {e}")
+        raise HTTPException(status_code=400, detail=f"获取用户信息失败: {str(e)}")
+
+    account.category = req.category
+    account.is_own_account = req.category in ("自己主号", "矩阵号")
+
+    try:
+        await feishu_service.save_account(account, category=req.category)
+    except Exception as e:
+        logger.warning(f"写入飞书失败: {e}")
+
+    return account
+
+
+@router.post("/{sec_user_id}/sync")
+async def sync_account_videos(sec_user_id: str):
+    """同步账号的所有视频数据到飞书"""
+    try:
+        videos = await tikhub_service.fetch_all_user_videos(sec_user_id)
+    except Exception as e:
+        logger.error(f"拉取视频失败: {e}")
+        raise HTTPException(status_code=400, detail=f"拉取视频失败: {str(e)}")
+
+    synced_count = 0
+    try:
+        if videos:
+            await feishu_service.save_videos_batch(videos)
+            synced_count = len(videos)
+    except Exception as e:
+        logger.warning(f"批量写入飞书失败: {e}")
+
+    return {
+        "message": f"同步完成，共 {len(videos)} 条视频",
+        "total": len(videos),
+        "synced_to_feishu": synced_count,
+        "videos": videos,
+    }
+
+
+@router.get("/list")
+async def list_accounts():
+    """获取已添加的账号列表"""
+    try:
+        accounts = await feishu_service.get_accounts()
+        return {"accounts": accounts}
+    except Exception as e:
+        logger.warning(f"从飞书读取账号失败: {e}")
+        return {"accounts": [], "error": str(e)}
+
+
+@router.get("/{account_id}/videos")
+async def get_account_videos(
+    account_id: str,
+    sort_by: str = Query("collect_rate", description="排序字段"),
+    order: str = Query("desc", description="排序方向"),
+):
+    """获取账号的视频列表（从飞书读取）"""
+    try:
+        videos = await feishu_service.get_account_videos(account_id)
+    except Exception as e:
+        logger.warning(f"从飞书读取视频失败: {e}")
+        videos = []
+
+    # 本地排序
+    reverse = order == "desc"
+    try:
+        videos.sort(key=lambda v: v.get(sort_by, 0) or 0, reverse=reverse)
+    except (TypeError, KeyError):
+        pass
+
+    return {"videos": videos, "total": len(videos)}
