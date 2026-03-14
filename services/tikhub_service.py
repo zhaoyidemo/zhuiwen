@@ -446,20 +446,28 @@ async def fetch_kol_audience_portrait(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_data_overview(kol_id: str, _type: str = '1', _range: str = '7',
-                                   flow_type: str = '', only_assign: str = '0') -> dict:
-    """获取 KOL 数据概览"""
+async def fetch_kol_data_overview(kol_id: str) -> dict:
+    """获取 KOL 数据概览 — 优先 V2 传播价值，失败回退 V1"""
+    # V2: get_author_spread_info
     try:
-        params = {"kolId": kol_id, "_type": _type, "_range": _range, "onlyAssign": only_assign}
-        if flow_type:
-            params["flowType"] = flow_type
-        data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1", params=params)
+        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_spread_info",
+                              params={"o_author_id": kol_id, "platform_source": "1", "platform_channel": "1"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
         return result
     except Exception as e:
-        logger.warning(f"获取数据概览失败: {e}")
+        logger.warning(f"获取传播价值(V2)失败: {e}")
+    # V1 fallback: 用整数参数
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1",
+                              params={"kolId": kol_id, "_type": 1, "_range": 7, "onlyAssign": 0})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取数据概览(V1)失败: {e}")
         return {}
 
 
@@ -525,30 +533,52 @@ async def fetch_kol_hot_comment_keywords(kol_id: str) -> dict:
 
 
 async def fetch_kol_base_info(kol_id: str) -> dict:
-    """获取 KOL 基本信息（简介、标签、认证等）"""
+    """获取 KOL 基本信息 — 优先用 V2，失败回退 V1"""
+    # V2: get_author_base_info
     try:
-        data = await _request("GET", "/api/v1/douyin/xingtu/kol_base_info_v1",
-                              params={"kolId": kol_id, "platformChannel": "douyin"})
+        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_base_info",
+                              params={"o_author_id": kol_id, "platform_source": "1", "platform_channel": "1"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
         return result
     except Exception as e:
-        logger.warning(f"获取KOL基本信息失败: {e}")
+        logger.warning(f"获取KOL基本信息(V2)失败: {e}")
+    # V1 fallback
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_base_info_v1",
+                              params={"kolId": kol_id, "platformChannel": "1"})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取KOL基本信息(V1)失败: {e}")
         return {}
 
 
 async def fetch_kol_service_price(kol_id: str) -> dict:
     """获取 KOL 商单报价"""
+    # 尝试 V2 商业卡片信息
     try:
-        data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
-                              params={"kolId": kol_id, "platformChannel": "douyin"})
+        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_business_card_info",
+                              params={"o_author_id": kol_id})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
         return result
     except Exception as e:
-        logger.warning(f"获取商单报价失败: {e}")
+        logger.warning(f"获取商业卡片(V2)失败: {e}")
+    # V1 fallback
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
+                              params={"kolId": kol_id, "platformChannel": "1"})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取商单报价(V1)失败: {e}")
         return {}
 
 
@@ -566,7 +596,7 @@ async def fetch_kol_cp_info(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_conversion_ability(kol_id: str, _range: str = '7') -> dict:
+async def fetch_kol_conversion_ability(kol_id: str, _range: int = 7) -> dict:
     """获取 KOL 转化能力分析"""
     try:
         params = {"kolId": kol_id, "_range": _range}
