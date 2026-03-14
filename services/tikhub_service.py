@@ -170,15 +170,26 @@ async def fetch_video_by_id(aweme_id: str) -> VideoData:
 
 
 async def parse_and_fetch_video(url: str) -> VideoData:
-    """统一入口：根据 URL 类型选择不同的获取方式"""
+    """统一入口：根据 URL 类型选择不同的获取方式，并尝试补充真实播放量"""
     url = url.strip()
     if _is_share_url(url):
-        return await fetch_video_by_share_url(url)
-    aweme_id = _extract_aweme_id(url)
-    if aweme_id:
-        return await fetch_video_by_id(aweme_id)
-    # 尝试当作分享链接处理
-    return await fetch_video_by_share_url(url)
+        video = await fetch_video_by_share_url(url)
+    elif _extract_aweme_id(url):
+        video = await fetch_video_by_id(_extract_aweme_id(url))
+    else:
+        video = await fetch_video_by_share_url(url)
+
+    # 尝试通过 statistics 接口获取真实播放量
+    if video.play_count == 0 and video.aweme_id:
+        stats = await fetch_video_statistics(video.aweme_id)
+        real_play = stats.get("play_count", 0)
+        if real_play > 0:
+            video.play_count = real_play
+            denominator = real_play
+            video.collect_rate = round(video.collect_count / denominator, 6) if denominator > 0 else 0.0
+            logger.info(f"通过 statistics 接口补充播放量: {real_play}")
+
+    return video
 
 
 async def fetch_user_profile(unique_id: str) -> AccountData:
@@ -246,6 +257,73 @@ async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
             break
         cursor = result["next_cursor"]
     return all_videos
+
+
+async def fetch_video_statistics(aweme_id: str) -> dict:
+    """获取视频真实播放量统计"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_id": aweme_id})
+        stats = data.get("data", {}).get("statistics", {}) or data.get("data", {})
+        return {
+            "play_count": stats.get("play_count", 0) or 0,
+            "digg_count": stats.get("digg_count", 0) or 0,
+            "comment_count": stats.get("comment_count", 0) or 0,
+            "collect_count": stats.get("collect_count", 0) or 0,
+            "share_count": stats.get("share_count", 0) or 0,
+        }
+    except Exception as e:
+        logger.warning(f"获取视频统计失败（不影响主流程）: {e}")
+        return {}
+
+
+async def fetch_video_trends(aweme_id: str, date_window: int = 7) -> list:
+    """获取视频数据趋势（Billboard API）"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/billboard/fetch_hot_item_trends_list",
+            params={"aweme_id": aweme_id, "option": "all", "date_window": date_window},
+        )
+        trends = data.get("data", {}).get("trend_list", []) or data.get("data", []) or []
+        return trends
+    except Exception as e:
+        logger.warning(f"获取视频趋势失败: {e}")
+        return []
+
+
+async def fetch_comment_word_cloud(aweme_id: str) -> list:
+    """获取评论词云权重（Billboard API）"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/billboard/fetch_hot_comment_word_list",
+            params={"aweme_id": aweme_id},
+        )
+        words = data.get("data", {}).get("word_list", []) or data.get("data", []) or []
+        return words
+    except Exception as e:
+        logger.warning(f"获取评论词云失败: {e}")
+        return []
+
+
+async def fetch_video_danmaku(aweme_id: str, duration: int = 0) -> list:
+    """获取视频弹幕数据（Web API）"""
+    try:
+        params = {"item_id": aweme_id}
+        if duration > 0:
+            params["duration"] = duration
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/web/fetch_one_video_danmaku",
+            params=params,
+        )
+        danmaku_list = data.get("data", []) or []
+        if isinstance(danmaku_list, dict):
+            danmaku_list = danmaku_list.get("danmaku_list", []) or danmaku_list.get("data", []) or []
+        return danmaku_list
+    except Exception as e:
+        logger.warning(f"获取弹幕数据失败: {e}")
+        return []
 
 
 async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) -> dict:

@@ -67,5 +67,12 @@ class AnalysisResult(BaseModel):
     created_at: str = ""
 
 
+class VideoExtendedData(BaseModel):
+    """视频扩展数据：趋势 + 词云 + 弹幕"""
+    trends: list = []
+    word_cloud: list = []
+    danmaku: list = []
+
+
 class PasswordRequest(BaseModel):
     password: str

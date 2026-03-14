@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from models.schemas import VideoParseRequest, VideoData
+from models.schemas import VideoParseRequest, VideoData, VideoExtendedData
 from services import tikhub_service, feishu_service
 
 logger = logging.getLogger(__name__)
@@ -36,3 +36,12 @@ async def get_video(aweme_id: str):
     except Exception as e:
         logger.error(f"获取视频失败: {e}")
         raise HTTPException(status_code=400, detail=f"获取视频失败: {str(e)}")
+
+
+@router.get("/{aweme_id}/extended", response_model=VideoExtendedData)
+async def get_video_extended(aweme_id: str):
+    """获取视频扩展数据：数据趋势、评论词云、弹幕"""
+    trends = await tikhub_service.fetch_video_trends(aweme_id)
+    word_cloud = await tikhub_service.fetch_comment_word_cloud(aweme_id)
+    danmaku = await tikhub_service.fetch_video_danmaku(aweme_id)
+    return VideoExtendedData(trends=trends, word_cloud=word_cloud, danmaku=danmaku)

@@ -158,10 +158,86 @@
                       class="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
                       ⬇ 无水印下载
                     </a>
+                    <button @click="loadExtended" :disabled="extendedLoading"
+                      class="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:bg-gray-300 transition-colors">
+                      <svg x-show="!extendedLoading" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                      <svg x-show="extendedLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                      深度分析
+                    </button>
                     <span class="flex items-center gap-1 text-xs text-emerald-500">✓ 已同步至飞书</span>
                   </div>
                 </div>
               </div>
+            </div>
+          </template>
+
+          <!-- 深度分析区域 -->
+          <template x-if="extendedData">
+            <div class="mt-6 space-y-6">
+
+              <!-- 评论词云 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.word_cloud && extendedData.word_cloud.length">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">评论热词</h3>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="(w, i) in extendedData.word_cloud.slice(0, 40)" :key="i">
+                    <span class="px-3 py-1.5 rounded-full text-sm"
+                      :style="'font-size:' + Math.max(12, Math.min(28, 12 + (w.weight || w.value || 1) * 2)) + 'px'"
+                      :class="['bg-blue-50 text-blue-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-emerald-50 text-emerald-700', 'bg-rose-50 text-rose-700'][i % 5]"
+                      x-text="w.word || w.name || w.keyword || ''"></span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 数据趋势 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.trends && extendedData.trends.length">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">数据趋势</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-left text-gray-500 border-b">
+                        <th class="py-2 pr-4">日期</th>
+                        <th class="py-2 pr-4 text-right">播放</th>
+                        <th class="py-2 pr-4 text-right">点赞</th>
+                        <th class="py-2 pr-4 text-right">评论</th>
+                        <th class="py-2 text-right">收藏</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="(t, i) in extendedData.trends" :key="i">
+                        <tr class="border-b border-gray-50">
+                          <td class="py-2 pr-4 text-gray-600" x-text="t.date || t.time || '-'"></td>
+                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.play_count || t.play || 0)"></td>
+                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.digg_count || t.digg || 0)"></td>
+                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.comment_count || t.comment || 0)"></td>
+                          <td class="py-2 text-right tabular-nums" x-text="fmtNum(t.collect_count || t.collect || 0)"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 弹幕 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.danmaku && extendedData.danmaku.length">
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">弹幕内容</h3>
+                <p class="text-xs text-gray-400 mb-4">共 <span x-text="extendedData.danmaku.length"></span> 条弹幕</p>
+                <div class="max-h-64 overflow-y-auto space-y-1.5">
+                  <template x-for="(d, i) in extendedData.danmaku" :key="i">
+                    <div class="flex items-start gap-2 text-sm">
+                      <span class="text-gray-300 text-xs shrink-0 w-8 text-right tabular-nums" x-text="d.offset ? fmtDuration(Math.floor(d.offset / 1000)) : ''"></span>
+                      <span class="text-gray-700" x-text="d.content || d.text || JSON.stringify(d)"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 没有扩展数据时的提示 -->
+              <div x-show="(!extendedData.word_cloud || !extendedData.word_cloud.length) && (!extendedData.trends || !extendedData.trends.length) && (!extendedData.danmaku || !extendedData.danmaku.length)"
+                class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-center text-gray-400">
+                <p>该视频暂无扩展数据（趋势/词云/弹幕）</p>
+                <p class="text-xs mt-1">部分数据仅对热门视频可用</p>
+              </div>
+
             </div>
           </template>
         </div>
@@ -292,6 +368,8 @@ function app() {
     videoLoading: false,
     videoError: '',
     videoData: null,
+    extendedData: null,
+    extendedLoading: false,
 
     // 竞品雷达
     uniqueId: '',
@@ -329,11 +407,21 @@ function app() {
     // 解析视频
     async parseVideo() {
       if (!this.videoUrl.trim()) return;
-      this.videoLoading = true; this.videoError = ''; this.videoData = null;
+      this.videoLoading = true; this.videoError = ''; this.videoData = null; this.extendedData = null;
       try {
         this.videoData = await this.api('POST', '/video/parse', { url: this.videoUrl.trim() });
       } catch (e) { this.videoError = e.message; }
       this.videoLoading = false;
+    },
+
+    // 加载深度分析数据
+    async loadExtended() {
+      if (!this.videoData?.aweme_id) return;
+      this.extendedLoading = true;
+      try {
+        this.extendedData = await this.api('GET', '/video/' + this.videoData.aweme_id + '/extended');
+      } catch (e) { this.videoError = '深度分析加载失败: ' + e.message; }
+      this.extendedLoading = false;
     },
 
     // 添加账号
