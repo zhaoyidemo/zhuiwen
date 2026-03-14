@@ -467,8 +467,8 @@ async def fetch_kol_data_overview(kol_id: str) -> dict:
     # 并发拉不同维度: 默认、近7天、近30天
     results = await asyncio.gather(
         _fetch_spread_info(kol_id),
-        _fetch_spread_info(kol_id, range="7"),
-        _fetch_spread_info(kol_id, range="30"),
+        _fetch_spread_info(kol_id, range="_1"),
+        _fetch_spread_info(kol_id, range="_2"),
     )
     # 合并所有结果（后面的不覆盖前面已有的）
     merged = {}
@@ -603,6 +603,11 @@ async def fetch_kol_service_price(kol_id: str) -> dict:
         r = data.get("data", {})
         if isinstance(r, dict) and "data" in r:
             r = r.get("data", {})
+        # card_info 里才是真正的数据
+        if isinstance(r, dict) and "card_info" in r:
+            card = r.get("card_info", {})
+            if isinstance(card, dict):
+                r = card
         if isinstance(r, dict):
             result.update(r)
             logger.info(f"商业卡片(V2)字段: {list(r.keys())}")
