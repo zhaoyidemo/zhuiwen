@@ -637,7 +637,7 @@ async def fetch_kol_convert_video_display(kol_id: str) -> list:
     """获取 KOL 转化视频展示（商单视频列表）"""
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_convert_video_display_v1",
-                              params={"kolId": kol_id})
+                              params={"kolId": kol_id, "detailType": 1, "page": 1})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             result = result.get("data", {})
