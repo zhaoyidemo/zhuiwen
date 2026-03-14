@@ -116,47 +116,26 @@ async def get_account_xingtu(sec_user_id: str):
     if not kol_id:
         return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": ""})
 
-    # 第二步：并发调用所有星图 API
+    # 第二步：并发调用精选星图 API（6次调用）
     (
         fans_portrait,
-        audience_portrait,
-        data_overview,
-        daily_fans,
-        video_performance,
         xingtu_index,
         hot_comment_keywords,
-        base_info,
         service_price,
         cp_info,
-        conversion_ability,
-        rec_videos,
     ) = await asyncio.gather(
         tikhub_service.fetch_kol_fans_portrait(kol_id),
-        tikhub_service.fetch_kol_audience_portrait(kol_id),
-        tikhub_service.fetch_kol_data_overview(kol_id),
-        tikhub_service.fetch_kol_daily_fans(kol_id),
-        tikhub_service.fetch_kol_video_performance(kol_id),
         tikhub_service.fetch_kol_xingtu_index(kol_id),
         tikhub_service.fetch_kol_hot_comment_keywords(kol_id),
-        tikhub_service.fetch_kol_base_info(kol_id),
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
-        tikhub_service.fetch_kol_conversion_ability(kol_id),
-        tikhub_service.fetch_kol_rec_videos(kol_id),
     )
 
     return JSONResponse(content={
         "kol_id": kol_id,
-        "base_info": base_info,
         "fans_portrait": fans_portrait,
-        "audience_portrait": audience_portrait,
-        "data_overview": data_overview,
-        "daily_fans": daily_fans,
-        "video_performance": video_performance,
         "xingtu_index": xingtu_index,
         "hot_comment_keywords": hot_comment_keywords,
         "service_price": service_price,
         "cp_info": cp_info,
-        "conversion_ability": conversion_ability,
-        "rec_videos": rec_videos,
     })
