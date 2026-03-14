@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
@@ -91,3 +92,45 @@ async def get_account_videos(
         pass
 
     return {"videos": videos, "total": len(videos)}
+
+
+@router.get("/{sec_user_id}/xingtu")
+async def get_account_xingtu(sec_user_id: str):
+    """获取账号的星图（Xingtu）分析数据"""
+    # 第一步：获取 kolId
+    kol_result = await tikhub_service.fetch_xingtu_kol_id(sec_user_id)
+    kol_id = ""
+    if isinstance(kol_result, dict):
+        kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "") or "")
+    if not kol_id:
+        return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": "", "raw": kol_result})
+
+    # 第二步：并发调用所有星图 API
+    (
+        fans_portrait,
+        audience_portrait,
+        data_overview,
+        daily_fans,
+        video_performance,
+        xingtu_index,
+        hot_comment_keywords,
+    ) = await asyncio.gather(
+        tikhub_service.fetch_kol_fans_portrait(kol_id),
+        tikhub_service.fetch_kol_audience_portrait(kol_id),
+        tikhub_service.fetch_kol_data_overview(kol_id),
+        tikhub_service.fetch_kol_daily_fans(kol_id),
+        tikhub_service.fetch_kol_video_performance(kol_id),
+        tikhub_service.fetch_kol_xingtu_index(kol_id),
+        tikhub_service.fetch_kol_hot_comment_keywords(kol_id),
+    )
+
+    return JSONResponse(content={
+        "kol_id": kol_id,
+        "fans_portrait": fans_portrait,
+        "audience_portrait": audience_portrait,
+        "data_overview": data_overview,
+        "daily_fans": daily_fans,
+        "video_performance": video_performance,
+        "xingtu_index": xingtu_index,
+        "hot_comment_keywords": hot_comment_keywords,
+    })

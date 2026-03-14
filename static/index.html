@@ -312,15 +312,243 @@
                   <span class="text-[10px] px-2 py-0.5 rounded"
                     :class="acc.category==='竞品' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'"
                     x-text="acc.category + (acc._synced ? ' · ' + acc._synced + '条' : '') + (acc._lastSync ? ' · ' + acc._lastSync : '')"></span>
-                  <button @click.stop="syncAccount(acc)" :disabled="syncingId === acc.sec_user_id"
-                    class="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300">
-                    <svg :class="syncingId === acc.sec_user_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                    <span x-text="acc._synced ? '刷新' : '同步视频'"></span>
-                  </button>
+                  <div class="flex items-center gap-2">
+                    <button x-show="acc._synced" @click.stop="loadXingtu(acc)" :disabled="xingtuLoading"
+                      class="flex items-center gap-1 text-xs text-purple-500 hover:text-purple-600 disabled:text-gray-300">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                      星图分析
+                    </button>
+                    <button @click.stop="syncAccount(acc)" :disabled="syncingId === acc.sec_user_id"
+                      class="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300">
+                      <svg :class="syncingId === acc.sec_user_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                      <span x-text="acc._synced ? '刷新' : '同步视频'"></span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </template>
           </div>
+
+          <!-- 星图分析加载中 -->
+          <div x-show="xingtuLoading" class="mb-6 text-center py-8">
+            <svg class="w-8 h-8 animate-spin mx-auto text-purple-500 mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <p class="text-sm text-gray-500">正在加载星图数据...</p>
+          </div>
+
+          <!-- 星图分析数据展示 -->
+          <template x-if="xingtuData && !xingtuLoading">
+            <div class="mb-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  星图分析
+                  <span class="text-xs text-gray-400 font-normal" x-text="'kolId: ' + xingtuData.kol_id"></span>
+                </h3>
+                <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
+              </div>
+
+              <!-- 星图指数卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {})" :key="key">
+                    <div class="text-center p-3 bg-purple-50 rounded-xl">
+                      <template x-if="typeof xingtuData.xingtu_index[key] === 'number' || typeof xingtuData.xingtu_index[key] === 'string'">
+                        <div>
+                          <p class="text-lg font-bold text-purple-700 tabular-nums" x-text="xingtuData.xingtu_index[key]"></p>
+                          <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 粉丝画像卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && Object.keys(xingtuData.fans_portrait).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝画像</h4>
+                <div class="space-y-4">
+                  <template x-for="key in Object.keys(xingtuData.fans_portrait || {})" :key="key">
+                    <div>
+                      <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                      <!-- 数组类型 -->
+                      <template x-if="Array.isArray(xingtuData.fans_portrait[key])">
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="(item, idx) in xingtuData.fans_portrait[key].slice(0, 10)" :key="idx">
+                            <span class="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                              <template x-if="typeof item === 'object' && item !== null">
+                                <span x-text="Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ')"></span>
+                              </template>
+                              <template x-if="typeof item !== 'object'">
+                                <span x-text="item"></span>
+                              </template>
+                            </span>
+                          </template>
+                        </div>
+                      </template>
+                      <!-- 对象类型 -->
+                      <template x-if="typeof xingtuData.fans_portrait[key] === 'object' && !Array.isArray(xingtuData.fans_portrait[key]) && xingtuData.fans_portrait[key] !== null">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          <template x-for="subKey in Object.keys(xingtuData.fans_portrait[key])" :key="subKey">
+                            <div class="text-center p-2 bg-gray-50 rounded-lg">
+                              <p class="text-sm font-semibold text-gray-700" x-text="xingtuData.fans_portrait[key][subKey]"></p>
+                              <p class="text-[10px] text-gray-400" x-text="xingtuLabel(subKey)"></p>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                      <!-- 简单值 -->
+                      <template x-if="typeof xingtuData.fans_portrait[key] !== 'object' && !Array.isArray(xingtuData.fans_portrait[key])">
+                        <p class="text-sm text-gray-700" x-text="xingtuData.fans_portrait[key]"></p>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 评论热词卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuHasHotWords()">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">评论热词</h4>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="(w, i) in xingtuHotWords()" :key="i">
+                    <span class="px-3 py-1.5 rounded-full cursor-default"
+                      :style="'font-size:' + Math.max(13, Math.min(28, 13 + (w.weight || 1) * 2)) + 'px'"
+                      :class="['bg-blue-50 text-blue-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-emerald-50 text-emerald-700', 'bg-rose-50 text-rose-700'][i % 5]">
+                      <span x-text="w.word || w.name || w.keyword || w.text || (typeof w === 'string' ? w : JSON.stringify(w))"></span>
+                      <span class="text-[10px] opacity-60" x-show="w.weight || w.count || w.value" x-text="'x' + (w.weight || w.count || w.value || '')"></span>
+                    </span>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 数据概览卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">数据概览</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  <template x-for="key in Object.keys(xingtuData.data_overview || {})" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.data_overview[key] === 'number' || typeof xingtuData.data_overview[key] === 'string'">
+                        <div class="text-center p-3 bg-gray-50 rounded-xl">
+                          <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="typeof xingtuData.data_overview[key] === 'number' ? fmtNum(xingtuData.data_overview[key]) : xingtuData.data_overview[key]"></p>
+                          <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
+                        </div>
+                      </template>
+                      <template x-if="typeof xingtuData.data_overview[key] === 'object' && xingtuData.data_overview[key] !== null">
+                        <div class="p-3 bg-gray-50 rounded-xl">
+                          <p class="text-xs text-gray-500 mb-1" x-text="xingtuLabel(key)"></p>
+                          <template x-if="Array.isArray(xingtuData.data_overview[key])">
+                            <div class="space-y-1">
+                              <template x-for="(item, idx) in xingtuData.data_overview[key].slice(0, 5)" :key="idx">
+                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? JSON.stringify(item) : item"></p>
+                              </template>
+                            </div>
+                          </template>
+                          <template x-if="!Array.isArray(xingtuData.data_overview[key])">
+                            <div class="space-y-1">
+                              <template x-for="subKey in Object.keys(xingtuData.data_overview[key]).slice(0, 5)" :key="subKey">
+                                <p class="text-xs text-gray-700"><span class="text-gray-400" x-text="xingtuLabel(subKey) + ': '"></span><span x-text="xingtuData.data_overview[key][subKey]"></span></p>
+                              </template>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 粉丝趋势表格 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuHasDailyFans()">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝趋势</h4>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="border-b border-gray-200">
+                        <template x-for="col in xingtuDailyFansCols()" :key="col">
+                          <th class="text-left py-2 px-3 text-xs text-gray-500 font-medium" x-text="xingtuLabel(col)"></th>
+                        </template>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="(row, idx) in xingtuDailyFansRows()" :key="idx">
+                        <tr class="border-b border-gray-100">
+                          <template x-for="col in xingtuDailyFansCols()" :key="col">
+                            <td class="py-2 px-3 text-gray-700 tabular-nums" x-text="typeof row[col] === 'number' ? fmtNum(row[col]) : row[col]"></td>
+                          </template>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 视频表现卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">视频表现</h4>
+                <div class="space-y-3">
+                  <template x-for="key in Object.keys(xingtuData.video_performance || {})" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.video_performance[key] === 'number' || typeof xingtuData.video_performance[key] === 'string'">
+                        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
+                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-gray-800 tabular-nums" x-text="typeof xingtuData.video_performance[key] === 'number' ? fmtNum(xingtuData.video_performance[key]) : xingtuData.video_performance[key]"></span>
+                        </div>
+                      </template>
+                      <template x-if="Array.isArray(xingtuData.video_performance[key])">
+                        <div>
+                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
+                          <div class="flex flex-wrap gap-2">
+                            <template x-for="(item, idx) in xingtuData.video_performance[key].slice(0, 10)" :key="idx">
+                              <span class="px-2 py-1 bg-gray-50 rounded text-xs text-gray-700" x-text="typeof item === 'object' ? JSON.stringify(item) : item"></span>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 观众画像 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && Object.keys(xingtuData.audience_portrait).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">观众画像</h4>
+                <div class="space-y-4">
+                  <template x-for="key in Object.keys(xingtuData.audience_portrait || {})" :key="key">
+                    <div>
+                      <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                      <template x-if="Array.isArray(xingtuData.audience_portrait[key])">
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="(item, idx) in xingtuData.audience_portrait[key].slice(0, 10)" :key="idx">
+                            <span class="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">
+                              <template x-if="typeof item === 'object' && item !== null">
+                                <span x-text="Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ')"></span>
+                              </template>
+                              <template x-if="typeof item !== 'object'">
+                                <span x-text="item"></span>
+                              </template>
+                            </span>
+                          </template>
+                        </div>
+                      </template>
+                      <template x-if="typeof xingtuData.audience_portrait[key] === 'object' && !Array.isArray(xingtuData.audience_portrait[key]) && xingtuData.audience_portrait[key] !== null">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          <template x-for="subKey in Object.keys(xingtuData.audience_portrait[key])" :key="subKey">
+                            <div class="text-center p-2 bg-gray-50 rounded-lg">
+                              <p class="text-sm font-semibold text-gray-700" x-text="xingtuData.audience_portrait[key][subKey]"></p>
+                              <p class="text-[10px] text-gray-400" x-text="xingtuLabel(subKey)"></p>
+                            </div>
+                          </template>
+                        </div>
+                      </template>
+                      <template x-if="typeof xingtuData.audience_portrait[key] !== 'object'">
+                        <p class="text-sm text-gray-700" x-text="xingtuData.audience_portrait[key]"></p>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
 
           <!-- 视频列表 -->
           <div x-show="selectedAccount && competitorVideos.length">
@@ -426,6 +654,8 @@ function app() {
     sortBy: 'collect_rate',
     fillingPlay: false,
     fillProgress: '',
+    xingtuData: null,
+    xingtuLoading: false,
 
     // API 请求
     async api(method, path, body = null) {
@@ -564,6 +794,7 @@ function app() {
     // 选中账号 → 自动加载缓存
     selectAccount(acc) {
       this.selectedAccount = acc;
+      this.xingtuData = null;
       this.loadCachedVideos(acc);
       this.sortVideos();
     },
@@ -643,6 +874,98 @@ function app() {
       this.fillProgress = `完成！${filled}/${total} 条获取到播放量`;
       this.fillingPlay = false;
       this.sortVideos();
+    },
+
+    // 加载星图分析数据
+    async loadXingtu(acc) {
+      if (this.xingtuLoading) return;
+      if (!acc.sec_user_id) { this.accountError = '该账号缺少 sec_user_id'; return; }
+      this.xingtuLoading = true; this.xingtuData = null; this.accountError = '';
+      this.selectedAccount = acc;
+      try {
+        const data = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu');
+        if (data.error) {
+          this.accountError = '星图分析: ' + data.error;
+        } else {
+          this.xingtuData = data;
+        }
+      } catch (e) { this.accountError = '星图分析加载失败: ' + e.message; }
+      this.xingtuLoading = false;
+    },
+
+    // 星图字段中文标签映射
+    xingtuLabel(key) {
+      const labels = {
+        'spread_score': '传播力', 'cooperation_score': '合作力', 'shop_score': '种草力',
+        'growth_score': '涨粉力', 'influence_score': '影响力', 'star_score': '性价比',
+        'cp_score': '传播指数', 'interact_score': '互动指数',
+        'gender': '性别', 'age': '年龄', 'city': '城市', 'province': '省份',
+        'interest': '兴趣', 'active_days': '活跃天数', 'fans_count': '粉丝数',
+        'date': '日期', 'day': '日期', 'total_fans_count': '总粉丝数',
+        'new_fans_count': '新增粉丝', 'lost_fans_count': '流失粉丝',
+        'avg_play_count': '平均播放', 'avg_digg_count': '平均点赞',
+        'avg_comment_count': '平均评论', 'avg_share_count': '平均转发',
+        'median_play_count': '中位播放', 'video_count': '视频数',
+        'name': '名称', 'value': '值', 'rate': '比例', 'percentage': '占比',
+        'kolId': 'KOL ID', 'kol_id': 'KOL ID',
+        'flowType': '流量类型', 'onlyAssign': '仅任务',
+      };
+      return labels[key] || key.replace(/_/g, ' ');
+    },
+
+    // 星图评论热词相关方法
+    xingtuHasHotWords() {
+      const hw = this.xingtuData?.hot_comment_keywords;
+      if (!hw) return false;
+      if (Array.isArray(hw) && hw.length > 0) return true;
+      if (typeof hw === 'object' && !Array.isArray(hw)) {
+        // 可能是 {list: [...]} 或 {keywords: [...]} 等
+        for (const v of Object.values(hw)) {
+          if (Array.isArray(v) && v.length > 0) return true;
+        }
+      }
+      return false;
+    },
+    xingtuHotWords() {
+      const hw = this.xingtuData?.hot_comment_keywords;
+      if (!hw) return [];
+      if (Array.isArray(hw)) return hw;
+      if (typeof hw === 'object') {
+        for (const v of Object.values(hw)) {
+          if (Array.isArray(v) && v.length > 0) return v;
+        }
+      }
+      return [];
+    },
+
+    // 粉丝趋势相关方法
+    xingtuHasDailyFans() {
+      const df = this.xingtuData?.daily_fans;
+      if (!df) return false;
+      if (Array.isArray(df) && df.length > 0) return true;
+      if (typeof df === 'object' && !Array.isArray(df)) {
+        for (const v of Object.values(df)) {
+          if (Array.isArray(v) && v.length > 0) return true;
+        }
+      }
+      return false;
+    },
+    xingtuDailyFansRows() {
+      const df = this.xingtuData?.daily_fans;
+      if (!df) return [];
+      if (Array.isArray(df)) return df.slice(0, 30);
+      if (typeof df === 'object') {
+        for (const v of Object.values(df)) {
+          if (Array.isArray(v) && v.length > 0) return v.slice(0, 30);
+        }
+      }
+      return [];
+    },
+    xingtuDailyFansCols() {
+      const rows = this.xingtuDailyFansRows();
+      if (!rows.length) return [];
+      const first = rows[0];
+      return typeof first === 'object' && first !== null ? Object.keys(first) : [];
     },
 
     sortVideos() {

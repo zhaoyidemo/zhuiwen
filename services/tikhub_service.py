@@ -402,6 +402,135 @@ async def fetch_video_danmaku(aweme_id: str, duration: int = 0) -> list:
         return []
 
 
+async def fetch_xingtu_kol_id(sec_user_id: str) -> dict:
+    """通过 sec_user_id 获取星图 kolId"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/get_xingtu_kolid_by_sec_user_id",
+                              params={"sec_user_id": sec_user_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取星图 kolId 失败: {e}")
+        return {}
+
+
+async def fetch_kol_fans_portrait(kol_id: str, fans_type: str = '') -> dict:
+    """获取 KOL 粉丝画像"""
+    try:
+        params = {"kolId": kol_id}
+        if fans_type:
+            params["fansType"] = fans_type
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_fans_portrait_v1", params=params)
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取粉丝画像失败: {e}")
+        return {}
+
+
+async def fetch_kol_audience_portrait(kol_id: str) -> dict:
+    """获取 KOL 观众画像"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_audience_portrait_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取观众画像失败: {e}")
+        return {}
+
+
+async def fetch_kol_data_overview(kol_id: str, _type: str = '', _range: str = '',
+                                   flow_type: str = '', only_assign: str = '') -> dict:
+    """获取 KOL 数据概览"""
+    try:
+        params = {"kolId": kol_id}
+        if _type:
+            params["_type"] = _type
+        if _range:
+            params["_range"] = _range
+        if flow_type:
+            params["flowType"] = flow_type
+        if only_assign:
+            params["onlyAssign"] = only_assign
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1", params=params)
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取数据概览失败: {e}")
+        return {}
+
+
+async def fetch_kol_daily_fans(kol_id: str, start_date: str = '', end_date: str = '') -> dict:
+    """获取 KOL 粉丝趋势"""
+    try:
+        params = {"kolId": kol_id}
+        if start_date:
+            params["startDate"] = start_date
+        if end_date:
+            params["endDate"] = end_date
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_daily_fans_v1", params=params)
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取粉丝趋势失败: {e}")
+        return {}
+
+
+async def fetch_kol_video_performance(kol_id: str, only_assign: str = '') -> dict:
+    """获取 KOL 视频表现"""
+    try:
+        params = {"kolId": kol_id}
+        if only_assign:
+            params["onlyAssign"] = only_assign
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_video_performance_v1", params=params)
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取视频表现失败: {e}")
+        return {}
+
+
+async def fetch_kol_xingtu_index(kol_id: str) -> dict:
+    """获取 KOL 星图指数"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_xingtu_index_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取星图指数失败: {e}")
+        return {}
+
+
+async def fetch_kol_hot_comment_keywords(kol_id: str) -> dict:
+    """获取 KOL 评论热词"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/author_content_hot_comment_keywords_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取评论热词失败: {e}")
+        return {}
+
+
 async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) -> dict:
     """获取视频评论"""
     data = await _request(
