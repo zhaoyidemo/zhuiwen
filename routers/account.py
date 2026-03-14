@@ -129,6 +129,7 @@ async def get_account_xingtu(sec_user_id: str):
         service_price,
         cp_info,
         conversion_ability,
+        rec_videos,
     ) = await asyncio.gather(
         tikhub_service.fetch_kol_fans_portrait(kol_id),
         tikhub_service.fetch_kol_audience_portrait(kol_id),
@@ -141,6 +142,7 @@ async def get_account_xingtu(sec_user_id: str):
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
         tikhub_service.fetch_kol_conversion_ability(kol_id),
+        tikhub_service.fetch_kol_rec_videos(kol_id),
     )
 
     return JSONResponse(content={
@@ -156,4 +158,5 @@ async def get_account_xingtu(sec_user_id: str):
         "service_price": service_price,
         "cp_info": cp_info,
         "conversion_ability": conversion_ability,
+        "rec_videos": rec_videos,
     })

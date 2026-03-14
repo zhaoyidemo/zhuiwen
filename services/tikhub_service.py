@@ -540,6 +540,20 @@ async def fetch_kol_xingtu_index(kol_id: str) -> dict:
         return {}
 
 
+async def fetch_kol_rec_videos(kol_id: str) -> dict:
+    """获取 KOL 代表作/爆款视频"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_rec_videos_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            return result.get("data", {})
+        return result
+    except Exception as e:
+        logger.warning(f"获取代表作失败: {e}")
+        return {}
+
+
 async def fetch_kol_hot_comment_keywords(kol_id: str) -> dict:
     """获取 KOL 评论热词"""
     try:

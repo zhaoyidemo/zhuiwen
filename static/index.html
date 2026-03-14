@@ -561,7 +561,7 @@
                 </div>
               </div>
 
-              <!-- 近30天粉丝变化（精简为一行数字） -->
+              <!-- 近30天粉丝变化 -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuHasDailyFans()">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">近30天粉丝变化</h4>
                 <div class="flex items-center gap-6">
@@ -578,6 +578,40 @@
                     <p class="text-lg font-semibold text-red-400 tabular-nums" x-text="'-' + fmtNum(xingtuFansSummary().lost)"></p>
                     <p class="text-xs text-gray-400 mt-1">流失</p>
                   </div>
+                </div>
+              </div>
+
+              <!-- 视频表现（精简：只显示核心数值） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).filter(k => xingtuShouldShow(k) && typeof xingtuData.video_performance[k] === 'number').length">
+                <h4 class="text-base font-semibold text-gray-800 mb-3">视频表现</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => xingtuShouldShow(k) && typeof xingtuData.video_performance[k] === 'number')" :key="key">
+                    <div class="text-center p-3 bg-gray-50 rounded-xl">
+                      <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="fmtNum(xingtuData.video_performance[key])"></p>
+                      <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 代表作/爆款视频 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuRecVideos().length">
+                <h4 class="text-base font-semibold text-gray-800 mb-3">代表作</h4>
+                <div class="space-y-2">
+                  <template x-for="(v, idx) in xingtuRecVideos()" :key="idx">
+                    <div class="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                      <span class="text-xs text-purple-500 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
+                      <img x-show="v.item_cover || v.cover" :src="v.item_cover || v.cover" class="w-16 h-10 rounded object-cover shrink-0">
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-800 line-clamp-1" x-text="v.title || v.desc || v.item_title || '(无标题)'"></p>
+                        <div class="flex gap-3 text-xs text-gray-400 mt-0.5">
+                          <span x-show="v.play_count || v.play_cnt">▶ <span x-text="fmtNum(v.play_count || v.play_cnt)"></span></span>
+                          <span x-show="v.digg_count || v.digg_cnt">❤ <span x-text="fmtNum(v.digg_count || v.digg_cnt)"></span></span>
+                          <span x-show="v.comment_count || v.comment_cnt">💬 <span x-text="fmtNum(v.comment_count || v.comment_cnt)"></span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1087,6 +1121,19 @@ function app() {
       }
       return false;
     },
+    // 提取代表作视频列表
+    xingtuRecVideos() {
+      const rv = this.xingtuData?.rec_videos;
+      if (!rv) return [];
+      if (Array.isArray(rv)) return rv.slice(0, 5);
+      if (typeof rv === 'object') {
+        for (const v of Object.values(rv)) {
+          if (Array.isArray(v) && v.length > 0) return v.slice(0, 5);
+        }
+      }
+      return [];
+    },
+
     // 汇总30天粉丝增减
     xingtuFansSummary() {
       const rows = (() => {
