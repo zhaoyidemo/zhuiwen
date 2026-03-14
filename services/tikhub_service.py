@@ -33,6 +33,8 @@ async def _request(method: str, path: str, params: dict = None, json_data: dict 
             params=params,
             json=json_data,
         )
+        if not resp.is_success:
+            logger.warning(f"TikHub API 错误 [{resp.status_code}] {path}: {resp.text}")
         resp.raise_for_status()
         return resp.json()
 
