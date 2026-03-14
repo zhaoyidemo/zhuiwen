@@ -198,11 +198,8 @@ async def fetch_user_profile(unique_id: str) -> AccountData:
     logger.info(f"TikHub user profile response keys: {list(data.keys())}")
 
     user_data = data.get("data", {})
-    # handler_user_profile_v2 可能直接返回用户数据，也可能嵌套在 user 或 data 里
-    user_info = user_data.get("user", {}) or user_data.get("data", {}) or user_data
-    if isinstance(user_info, dict) and not user_info.get("sec_uid") and user_data.get("sec_uid"):
-        user_info = user_data
-    logger.info(f"user_info keys: {list(user_info.keys()) if isinstance(user_info, dict) else type(user_info)}, sec_uid={user_info.get('sec_uid', 'MISSING')}")
+    # handler_user_profile_v2 结构: data.data.user_info
+    user_info = user_data.get("user_info", {}) or user_data.get("user", {}) or user_data
     stats = user_info.get("statistics", {}) or {}
 
     avatar = user_info.get("avatar_thumb", {}) or user_info.get("avatar_medium", {}) or {}
