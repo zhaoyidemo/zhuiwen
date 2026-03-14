@@ -264,14 +264,17 @@ async def fetch_video_statistics(aweme_id: str) -> dict:
     try:
         data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_ids": aweme_id})
         result = data.get("data", {})
-        logger.info(f"statistics data 字段类型={type(result).__name__}, 内容={str(result)[:500]}")
-        # 返回可能是列表或字典
-        if isinstance(result, list) and result:
-            stats = result[0].get("statistics", result[0]) if isinstance(result[0], dict) else {}
-        elif isinstance(result, dict):
-            stats = result.get("statistics", {}) or result
-        else:
-            stats = {}
+        # 结构: {statistics_list: [{aweme_id, play_count, digg_count, share_count}]}
+        stats = {}
+        if isinstance(result, dict):
+            stats_list = result.get("statistics_list", [])
+            if isinstance(stats_list, list) and stats_list:
+                stats = stats_list[0]
+            elif not stats_list:
+                stats = result.get("statistics", {}) or result
+        elif isinstance(result, list) and result:
+            stats = result[0] if isinstance(result[0], dict) else {}
+        logger.info(f"statistics 提取结果: play_count={stats.get('play_count', 0)}")
         return {
             "play_count": stats.get("play_count", 0) or 0,
             "digg_count": stats.get("digg_count", 0) or 0,
@@ -333,9 +336,12 @@ async def fetch_comment_word_cloud(aweme_id: str) -> list:
 async def fetch_video_danmaku(aweme_id: str, duration: int = 0) -> list:
     """获取视频弹幕数据（Web API）"""
     try:
-        params = {"item_id": aweme_id}
-        if duration > 0:
-            params["duration"] = duration
+        params = {
+            "item_id": aweme_id,
+            "duration": duration if duration > 0 else 300,
+            "start_time": 0,
+            "end_time": duration if duration > 0 else 300,
+        }
         data = await _request(
             "GET",
             "/api/v1/douyin/web/fetch_one_video_danmaku",
