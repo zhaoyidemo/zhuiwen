@@ -493,20 +493,6 @@
                 </div>
               </div>
 
-              <!-- 评论热词卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuHasHotWords()">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">评论热词</h4>
-                <div class="flex flex-wrap gap-2">
-                  <template x-for="(w, i) in xingtuHotWords()" :key="i">
-                    <span class="px-3 py-1.5 rounded-full cursor-default"
-                      :style="'font-size:' + Math.max(13, Math.min(28, 13 + (w.weight || 1) * 2)) + 'px'"
-                      :class="['bg-blue-50 text-blue-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-emerald-50 text-emerald-700', 'bg-rose-50 text-rose-700'][i % 5]">
-                      <span x-text="w.word || w.name || w.keyword || w.text || (typeof w === 'string' ? w : JSON.stringify(w))"></span>
-                      <span class="text-[10px] opacity-60" x-show="w.weight || w.count || w.value" x-text="'x' + (w.weight || w.count || w.value || '')"></span>
-                    </span>
-                  </template>
-                </div>
-              </div>
 
             </div>
           </template>

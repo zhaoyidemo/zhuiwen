@@ -120,13 +120,11 @@ async def get_account_xingtu(sec_user_id: str):
     (
         fans_portrait,
         xingtu_index,
-        hot_comment_keywords,
         service_price,
         cp_info,
     ) = await asyncio.gather(
         tikhub_service.fetch_kol_fans_portrait(kol_id),
         tikhub_service.fetch_kol_xingtu_index(kol_id),
-        tikhub_service.fetch_kol_hot_comment_keywords(kol_id),
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
     )
@@ -135,7 +133,6 @@ async def get_account_xingtu(sec_user_id: str):
         "kol_id": kol_id,
         "fans_portrait": fans_portrait,
         "xingtu_index": xingtu_index,
-        "hot_comment_keywords": hot_comment_keywords,
         "service_price": service_price,
         "cp_info": cp_info,
     })
