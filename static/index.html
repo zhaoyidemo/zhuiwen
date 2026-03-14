@@ -427,10 +427,10 @@
                   </table>
                 </div>
                 <!-- 热门视频 -->
-                <div x-show="Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
+                <div x-show="xingtuData.cp_info.hot_item && Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
                   <h5 class="text-sm font-semibold text-gray-700 mb-2">热门视频</h5>
                   <div class="space-y-2">
-                    <template x-for="(item, idx) in (xingtuData.cp_info.hot_item || []).slice(0, 3)" :key="idx">
+                    <template x-for="(item, idx) in (Array.isArray(xingtuData.cp_info.hot_item) ? xingtuData.cp_info.hot_item.slice(0, 3) : [])" :key="idx">
                       <div class="flex items-center gap-3 py-2 px-3 bg-indigo-50/50 rounded-lg">
                         <span class="text-xs text-indigo-400 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
                         <span class="text-sm text-gray-700 truncate flex-1" x-text="item.title || item.desc || item.name || (typeof item === 'string' ? item : JSON.stringify(item))"></span>
