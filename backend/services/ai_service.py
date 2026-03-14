@@ -4,7 +4,7 @@ from datetime import datetime
 
 import anthropic
 
-from config import settings
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 

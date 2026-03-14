@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from config import settings
-from routers import video, account, analysis
-from models.schemas import PasswordRequest
+from backend.config import settings
+from backend.routers import video, account, analysis
+from backend.models.schemas import PasswordRequest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)

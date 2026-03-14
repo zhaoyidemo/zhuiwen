@@ -5,7 +5,7 @@ from typing import Optional
 
 import httpx
 
-from config import settings
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 

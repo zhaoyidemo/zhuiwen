@@ -2,9 +2,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from models.schemas import AnalysisRequest
-from services import ai_service, feishu_service
-from config import settings
+from backend.models.schemas import AnalysisRequest
+from backend.services import ai_service, feishu_service
+from backend.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/analysis", tags=["AI 分析"])
