@@ -260,10 +260,18 @@ async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
 
 
 async def fetch_video_statistics(aweme_id: str) -> dict:
-    """获取视频真实播放量统计"""
+    """获取视频真实播放量统计（参数为 aweme_ids，支持批量）"""
     try:
-        data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_id": aweme_id})
-        stats = data.get("data", {}).get("statistics", {}) or data.get("data", {})
+        data = await _request("GET", "/api/v1/douyin/app/v3/fetch_video_statistics", params={"aweme_ids": aweme_id})
+        logger.info(f"statistics 原始返回: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+        result = data.get("data", {})
+        # 返回可能是列表或字典
+        if isinstance(result, list) and result:
+            stats = result[0].get("statistics", result[0]) if isinstance(result[0], dict) else {}
+        elif isinstance(result, dict):
+            stats = result.get("statistics", {}) or result
+        else:
+            stats = {}
         return {
             "play_count": stats.get("play_count", 0) or 0,
             "digg_count": stats.get("digg_count", 0) or 0,
