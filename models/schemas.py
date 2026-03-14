@@ -18,6 +18,7 @@ class VideoData(BaseModel):
     collect_count: int = 0
     share_count: int = 0
     collect_rate: float = 0.0
+    engagement_rate: float = 0.0
     tags: str = ""
     music_title: str = ""
     video_url: str = ""

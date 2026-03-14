@@ -78,10 +78,13 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
 
     play_count = statistics.get("play_count", 0) or statistics.get("view_count", 0) or 0
     digg_count = statistics.get("digg_count", 0) or 0
+    comment_count = statistics.get("comment_count", 0) or 0
     collect_count = statistics.get("collect_count", 0) or 0
+    share_count = statistics.get("share_count", 0) or 0
     # 播放量为 0 时，用点赞数估算播放量来计算收藏率（抖音部分端点不返回播放量）
     denominator = play_count if play_count > 0 else digg_count
     collect_rate = round(collect_count / denominator, 6) if denominator > 0 else 0.0
+    engagement_rate = round((digg_count + comment_count + share_count + collect_count) / denominator, 6) if denominator > 0 else 0.0
 
     # 提取话题标签
     text_extra = item.get("text_extra", []) or []
@@ -123,10 +126,11 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
         duration=_parse_duration(item, video),
         play_count=play_count,
         digg_count=digg_count,
-        comment_count=statistics.get("comment_count", 0) or 0,
+        comment_count=comment_count,
         collect_count=collect_count,
-        share_count=statistics.get("share_count", 0) or 0,
+        share_count=share_count,
         collect_rate=collect_rate,
+        engagement_rate=engagement_rate,
         tags=tags,
         music_title=music.get("title", ""),
         video_url=video_url,
@@ -189,6 +193,7 @@ async def parse_and_fetch_video(url: str) -> VideoData:
             video.play_count = real_play
             denominator = real_play
             video.collect_rate = round(video.collect_count / denominator, 6) if denominator > 0 else 0.0
+            video.engagement_rate = round((video.digg_count + video.comment_count + video.share_count + video.collect_count) / denominator, 6) if denominator > 0 else 0.0
             logger.info(f"通过 statistics 接口补充播放量: {real_play}")
 
     return video
@@ -305,6 +310,7 @@ async def _batch_fill_play_count(videos: list[VideoData]):
                 if play > 0:
                     v.play_count = play
                     v.collect_rate = round(v.collect_count / play, 6) if play > 0 else 0.0
+                    v.engagement_rate = round((v.digg_count + v.comment_count + v.share_count + v.collect_count) / play, 6) if play > 0 else 0.0
             logger.info(f"批量补充播放量: {len(batch)}条, 成功{len(stats_map)}条")
         except Exception as e:
             logger.warning(f"批量获取统计失败: {e}")

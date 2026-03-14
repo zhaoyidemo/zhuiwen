@@ -519,6 +519,7 @@
                   <span x-text="fillingPlay ? fillProgress : '补充播放量'"></span>
                 </button>
                 <select x-model="sortBy" @change="sortVideos" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+                  <option value="engagement_rate">互动率</option>
                   <option value="collect_rate">收藏率</option>
                   <option value="digg_count">点赞数</option>
                   <option value="comment_count">评论数</option>
@@ -556,6 +557,9 @@
                         <span class="font-semibold" :class="rateColorClass(v.collect_rate)">
                           <span x-text="v.play_count > 0 ? '收藏率' : '收藏/赞'"></span>
                           <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span>
+                        </span>
+                        <span x-show="v.engagement_rate > 0" class="font-semibold text-indigo-500">
+                          互动率 <span x-text="fmtRate(v.engagement_rate)" class="tabular-nums"></span>
                         </span>
                       </div>
                     </div>
