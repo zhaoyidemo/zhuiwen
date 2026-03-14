@@ -538,42 +538,15 @@
                 </template>
               </div>
 
-              <!-- 商单报价卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => xingtuShouldShow(k)).length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
+              <!-- 商业信息卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => bizWhitelist.has(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">商业信息</h4>
                 <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => xingtuShouldShow(k))" :key="key">
-                    <div>
-                      <template x-if="typeof xingtuData.service_price[key] === 'number' || typeof xingtuData.service_price[key] === 'string'">
-                        <div class="flex items-center justify-between py-2.5 px-4 bg-amber-50 rounded-lg">
-                          <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
-                          <span class="text-sm font-bold tabular-nums"
-                            :class="key.includes('price') || key.includes('quote') || key.includes('cpm') ? 'text-amber-600 text-base' : 'text-gray-800'"
-                            x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : xingtuData.service_price[key]"></span>
-                        </div>
-                      </template>
-                      <template x-if="typeof xingtuData.service_price[key] === 'object' && xingtuData.service_price[key] !== null">
-                        <div class="py-2.5 px-4 bg-amber-50 rounded-lg">
-                          <p class="text-sm text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                          <template x-if="Array.isArray(xingtuData.service_price[key])">
-                            <div class="space-y-1">
-                              <template x-for="(item, idx) in xingtuData.service_price[key].slice(0, 10)" :key="idx">
-                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ') : item"></p>
-                              </template>
-                            </div>
-                          </template>
-                          <template x-if="!Array.isArray(xingtuData.service_price[key])">
-                            <div class="space-y-1">
-                              <template x-for="subKey in Object.keys(xingtuData.service_price[key]).filter(k => xingtuShouldShow(k)).slice(0, 10)" :key="subKey">
-                                <div class="flex items-center justify-between">
-                                  <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
-                                  <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.service_price[key][subKey]"></span>
-                                </div>
-                              </template>
-                            </div>
-                          </template>
-                        </div>
-                      </template>
+                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => bizWhitelist.has(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
+                    <div class="flex items-center justify-between py-2.5 px-4 bg-amber-50 rounded-lg">
+                      <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
+                      <span class="text-sm font-bold tabular-nums text-gray-800"
+                        x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : (xingtuData.service_price[key] === true ? '是' : xingtuData.service_price[key] === false ? '否' : xingtuData.service_price[key])"></span>
                     </div>
                   </template>
                 </div>
@@ -1103,6 +1076,12 @@ function app() {
       'fans_count', 'video_count',
     ]),
     // 数据概览/视频表现中有用的字段
+    // 商业信息白名单
+    bizWhitelist: new Set([
+      'city', 'email', 'follower', 'cooperation_brand', 'credit_score',
+      'has_wechat', 'price', 'quote_price', 'service_price', 'cpm',
+      'mcn_name', 'industry', 'content_tag',
+    ]),
     metricsWhitelist: new Set([
       'avg_play_count', 'avg_digg_count', 'avg_comment_count', 'avg_share_count',
       'avg_collect_count', 'median_play_count', 'median_digg_count',
@@ -1125,7 +1104,9 @@ function app() {
         'cpm_1_20': '1-20秒', 'cpm_21_60': '21-60秒', 'cpm_60': '60秒+',
         'hot_item': '热门视频',
         // 粉丝相关
-        'fans_count': '粉丝数', 'follower_count': '粉丝数', 'following_count': '关注数',
+        'fans_count': '粉丝数', 'follower_count': '粉丝数', 'follower': '粉丝数', 'following_count': '关注数',
+        'cooperation_brand': '合作品牌', 'credit_score': '信用分', 'has_wechat': '有微信',
+        'mcn_name': 'MCN机构', 'industry': '行业', 'content_tag': '内容标签', 'email': '邮箱',
         'total_fans_count': '总粉丝', 'new_fans_count': '新增粉丝', 'lost_fans_count': '流失粉丝',
         'net_increase': '净增长', 'total_favorited': '总获赞', 'mplatform_followers_count': '全平台粉丝',
         // 视频表现
