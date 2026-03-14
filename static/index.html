@@ -480,14 +480,53 @@
                 </div>
               </div>
 
-              <!-- 商业信息卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => bizWhitelist.has(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0).length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">商业信息</h4>
+              <!-- 商单报价卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 1">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
+
+                <!-- price_info 报价详情 -->
+                <template x-if="xingtuData.service_price.price_info">
+                  <div class="mb-4">
+                    <template x-if="Array.isArray(xingtuData.service_price.price_info)">
+                      <div class="space-y-2">
+                        <template x-for="(p, idx) in xingtuData.service_price.price_info" :key="idx">
+                          <div class="flex items-center justify-between py-3 px-4 bg-amber-50 rounded-lg">
+                            <span class="text-sm text-gray-700" x-text="p.desc || p.name || p.type_name || p.price_type_name || ('报价' + (idx+1))"></span>
+                            <span class="text-lg font-bold text-amber-600 tabular-nums" x-text="'¥' + fmtNum(p.price || p.amount || p.value || 0)"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <template x-if="typeof xingtuData.service_price.price_info === 'object' && !Array.isArray(xingtuData.service_price.price_info)">
+                      <div class="space-y-2">
+                        <template x-for="key in Object.keys(xingtuData.service_price.price_info).filter(k => xingtuShouldShow(k))" :key="key">
+                          <div class="flex items-center justify-between py-3 px-4 bg-amber-50 rounded-lg">
+                            <span class="text-sm text-gray-700" x-text="xingtuLabel(key)"></span>
+                            <span class="text-lg font-bold text-amber-600 tabular-nums"
+                              x-text="typeof xingtuData.service_price.price_info[key] === 'number' ? '¥' + fmtNum(xingtuData.service_price.price_info[key]) : xingtuData.service_price.price_info[key]"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+
+                <!-- industry_tags 行业标签 -->
+                <div x-show="xingtuData.service_price.industry_tags && Array.isArray(xingtuData.service_price.industry_tags) && xingtuData.service_price.industry_tags.length" class="mb-4">
+                  <p class="text-xs text-gray-500 mb-2">行业标签</p>
+                  <div class="flex flex-wrap gap-2">
+                    <template x-for="(t, i) in xingtuData.service_price.industry_tags" :key="i">
+                      <span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs" x-text="typeof t === 'object' ? (t.name || t.label || JSON.stringify(t)) : t"></span>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- 其他简单字段 -->
                 <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => bizWhitelist.has(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
-                    <div class="flex items-center justify-between py-2.5 px-4 bg-amber-50 rounded-lg">
+                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => bizWhitelist.has(k) && !['price_info','industry_tags','activity_info','nick_name'].includes(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
+                    <div class="flex items-center justify-between py-2 px-4 bg-gray-50 rounded-lg">
                       <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
-                      <span class="text-sm font-bold tabular-nums text-gray-800"
+                      <span class="text-sm font-semibold text-gray-800 tabular-nums"
                         x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : (xingtuData.service_price[key] === true ? '是' : xingtuData.service_price[key] === false ? '否' : xingtuData.service_price[key])"></span>
                     </div>
                   </template>
@@ -998,8 +1037,9 @@ function app() {
     // 商业信息白名单
     bizWhitelist: new Set([
       'city', 'email', 'follower', 'cooperation_brand', 'credit_score',
-      'has_wechat', 'price', 'quote_price', 'service_price', 'cpm',
-      'mcn_name', 'industry', 'content_tag',
+      'has_wechat', 'wechat', 'price', 'quote_price', 'service_price', 'cpm',
+      'mcn_name', 'industry', 'content_tag', 'self_intro', 'phone',
+      'price_info', 'industry_tags', 'activity_info', 'unique_id', 'nick_name',
     ]),
     metricsWhitelist: new Set([
       'avg_play_count', 'avg_digg_count', 'avg_comment_count', 'avg_share_count',
@@ -1024,8 +1064,13 @@ function app() {
         'hot_item': '热门视频',
         // 粉丝相关
         'fans_count': '粉丝数', 'follower_count': '粉丝数', 'follower': '粉丝数', 'following_count': '关注数',
-        'cooperation_brand': '合作品牌', 'credit_score': '信用分', 'has_wechat': '有微信',
+        'cooperation_brand': '合作品牌', 'credit_score': '信用分', 'has_wechat': '有微信', 'wechat': '微信号',
         'mcn_name': 'MCN机构', 'industry': '行业', 'content_tag': '内容标签', 'email': '邮箱',
+        'price_info': '报价详情', 'industry_tags': '行业标签', 'activity_info': '活动信息',
+        'self_intro': '自我介绍', 'phone': '电话', 'privacy_status': '隐私状态',
+        'price_type_name': '报价类型', 'price': '价格', 'amount': '金额',
+        'desc': '描述', 'type_name': '类型', 'price_type': '报价类型',
+        'video_price': '视频报价', 'live_price': '直播报价', 'image_price': '图文报价',
         'total_fans_count': '总粉丝', 'new_fans_count': '新增粉丝', 'lost_fans_count': '流失粉丝',
         'net_increase': '净增长', 'total_favorited': '总获赞', 'mplatform_followers_count': '全平台粉丝',
         // 视频表现
