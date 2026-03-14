@@ -583,7 +583,7 @@ async def fetch_kol_base_info(kol_id: str) -> dict:
     # V1 fallback
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_base_info_v1",
-                              params={"kolId": kol_id, "platformChannel": "1"})
+                              params={"kolId": kol_id, "platformChannel": "_1"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
@@ -611,7 +611,7 @@ async def fetch_kol_service_price(kol_id: str) -> dict:
     # V1 报价（补充，可能失败）
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
-                              params={"kolId": kol_id, "platformChannel": "1"})
+                              params={"kolId": kol_id, "platformChannel": "_1"})
         r = data.get("data", {})
         if isinstance(r, dict) and "data" in r:
             r = r.get("data", {})
