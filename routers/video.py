@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from backend.models.schemas import VideoParseRequest, VideoData
-from backend.services import tikhub_service, feishu_service
+from models.schemas import VideoParseRequest, VideoData
+from services import tikhub_service, feishu_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/video", tags=["视频"])

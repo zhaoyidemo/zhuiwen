@@ -5,8 +5,8 @@ from typing import Optional
 
 import httpx
 
-from backend.config import settings
-from backend.models.schemas import VideoData, AccountData
+from config import settings
+from models.schemas import VideoData, AccountData
 
 logger = logging.getLogger(__name__)
 

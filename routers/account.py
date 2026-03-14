@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.models.schemas import AccountAddRequest, AccountData
-from backend.services import tikhub_service, feishu_service
+from models.schemas import AccountAddRequest, AccountData
+from services import tikhub_service, feishu_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/account", tags=["账号"])

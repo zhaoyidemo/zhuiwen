@@ -1,7 +1,4 @@
 __pycache__/
 *.pyc
 .env
-node_modules/
-frontend/dist/
 .vscode/
-*.egg-info/

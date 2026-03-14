@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from backend.config import settings
-from backend.routers import video, account, analysis
-from backend.models.schemas import PasswordRequest
+from config import settings
+from routers import video, account, analysis
+from models.schemas import PasswordRequest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -28,14 +28,12 @@ app.add_middleware(
 # 密码验证中间件
 @app.middleware("http")
 async def password_middleware(request: Request, call_next):
-    # 静态文件、健康检查、密码验证接口不需要密码
     path = request.url.path
     if (
         path == "/"
         or path == "/health"
         or path == "/api/auth/verify"
-        or path.startswith("/assets")
-        or path.endswith((".js", ".css", ".ico", ".png", ".svg", ".jpg"))
+        or path.startswith("/static")
         or not path.startswith("/api")
     ):
         return await call_next(request)
@@ -47,7 +45,7 @@ async def password_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# 路由
+# API 路由
 app.include_router(video.router)
 app.include_router(account.router)
 app.include_router(analysis.router)
@@ -65,15 +63,11 @@ async def health():
     return {"status": "ok", "version": "1.0.0"}
 
 
-# 静态文件服务（前端构建产物）
-STATIC_DIR = Path(__file__).parent.parent / "frontend" / "dist"
-if STATIC_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+# 静态文件服务
+STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        """SPA fallback: 所有非 API 路由返回 index.html"""
-        file_path = STATIC_DIR / full_path
-        if file_path.exists() and file_path.is_file():
-            return FileResponse(str(file_path))
-        return FileResponse(str(STATIC_DIR / "index.html"))
+
+@app.get("/")
+async def index():
+    return FileResponse(str(STATIC_DIR / "index.html"))

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>继续追问 | 抖音数据分析</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    [x-cloak] { display: none !important; }
+  </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<div x-data="app()" x-cloak>
+
+  <!-- 密码验证 -->
+  <template x-if="!authed">
+    <div class="min-h-screen bg-gray-900 flex items-center justify-center">
+      <form @submit.prevent="login" class="bg-gray-800 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
+        <div class="flex justify-center mb-6">
+          <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+        </div>
+        <h1 class="text-white text-xl font-semibold text-center mb-2">继续追问</h1>
+        <p class="text-gray-400 text-sm text-center mb-6">抖音数据分析平台</p>
+        <input type="password" x-model="password" placeholder="请输入访问密码"
+          class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 mb-4" autofocus>
+        <p x-show="loginError" class="text-red-400 text-sm mb-4" x-text="loginError"></p>
+        <button type="submit" :disabled="!password || loginLoading"
+          class="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-medium transition-colors">
+          <span x-text="loginLoading ? '验证中...' : '进入'"></span>
+        </button>
+      </form>
+    </div>
+  </template>
+
+  <!-- 主界面 -->
+  <template x-if="authed">
+    <div class="flex h-screen">
+      <!-- 侧边栏 -->
+      <aside class="w-56 bg-gray-900 text-gray-300 flex flex-col shrink-0">
+        <div class="p-5 border-b border-gray-700">
+          <h1 class="text-lg font-bold text-white leading-tight">继续追问</h1>
+          <p class="text-xs text-gray-500 mt-1">抖音数据分析平台</p>
+        </div>
+        <nav class="flex-1 py-4 px-3 space-y-1">
+          <button @click="tab='video'" :class="tab==='video' ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-gray-800 text-gray-400'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            视频解剖台
+          </button>
+          <button @click="tab='competitor'" :class="tab==='competitor' ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-gray-800 text-gray-400'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            竞品雷达
+          </button>
+          <button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left text-gray-600 cursor-default">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            作战仪表盘 <span class="ml-auto text-[10px] bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded">V2</span>
+          </button>
+          <button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left text-gray-600 cursor-default">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a9 9 0 0 1 9 9c0 3.9-3.2 7.1-5.2 9.3a2 2 0 0 1-3 .1C10.8 18.5 3 13.4 3 9a9 9 0 0 1 9-7z"/></svg>
+            AI 分析 <span class="ml-auto text-[10px] bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded">V2</span>
+          </button>
+        </nav>
+        <div class="p-4 border-t border-gray-700 text-xs text-gray-600">v1.0.0 · 赵翼</div>
+      </aside>
+
+      <!-- 主内容 -->
+      <main class="flex-1 overflow-auto">
+
+        <!-- 视频解剖台 -->
+        <div x-show="tab==='video'" class="p-6 max-w-4xl mx-auto">
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">视频解剖台</h2>
+          <p class="text-sm text-gray-500 mb-6">粘贴抖音视频链接，一键获取完整数据</p>
+
+          <div class="flex gap-3 mb-8">
+            <input type="text" x-model="videoUrl" @keydown.enter="parseVideo" placeholder="粘贴抖音视频链接（支持 v.douyin.com 短链和完整链接）"
+              class="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            <button @click="parseVideo" :disabled="videoLoading || !videoUrl.trim()"
+              class="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl font-medium flex items-center gap-2 transition-colors">
+              <svg x-show="!videoLoading" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg x-show="videoLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              解析
+            </button>
+          </div>
+
+          <div x-show="videoError" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="videoError"></div>
+
+          <!-- 视频结果 -->
+          <template x-if="videoData">
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div class="flex flex-col md:flex-row">
+                <div class="md:w-72 shrink-0 bg-black flex items-center justify-center" x-show="videoData.cover_url">
+                  <img :src="videoData.cover_url" class="w-full h-full object-contain max-h-96">
+                </div>
+                <div class="flex-1 p-6">
+                  <!-- 作者 -->
+                  <div class="flex items-center gap-3 mb-4">
+                    <img x-show="videoData.author_avatar" :src="videoData.author_avatar" class="w-10 h-10 rounded-full">
+                    <div>
+                      <p class="font-medium text-gray-800" x-text="videoData.author_nickname || '未知作者'"></p>
+                      <p class="text-xs text-gray-400">
+                        @<span x-text="videoData.author_unique_id"></span>
+                        <template x-if="videoData.author_follower_count">
+                          <span> · <span x-text="fmtNum(videoData.author_follower_count)"></span> 粉丝</span>
+                        </template>
+                      </p>
+                    </div>
+                  </div>
+                  <p class="text-gray-700 text-sm leading-relaxed mb-4" x-text="videoData.desc || '(无描述)'"></p>
+
+                  <!-- 收藏率高亮 -->
+                  <div class="rounded-xl border p-4 mb-4" :class="rateBgClass(videoData.collect_rate)">
+                    <p class="text-xs text-gray-500 mb-1">收藏率（北极星指标）</p>
+                    <p class="text-3xl font-bold tabular-nums" :class="rateColorClass(videoData.collect_rate)" x-text="fmtRate(videoData.collect_rate)"></p>
+                  </div>
+
+                  <!-- 互动数据 -->
+                  <div class="grid grid-cols-5 gap-3 mb-4">
+                    <template x-for="s in videoStats" :key="s.label">
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(s.value)"></p>
+                        <p class="text-[10px] text-gray-400" x-text="s.label"></p>
+                      </div>
+                    </template>
+                  </div>
+
+                  <!-- 元信息 -->
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 mb-4">
+                    <span>发布 <span x-text="videoData.create_time"></span></span>
+                    <span x-show="videoData.duration > 0" x-text="'时长 ' + fmtDuration(videoData.duration)"></span>
+                    <span x-show="videoData.music_title" x-text="'♪ ' + videoData.music_title"></span>
+                  </div>
+
+                  <!-- 标签 -->
+                  <div class="flex flex-wrap gap-1.5 mb-4" x-show="videoData.tags">
+                    <template x-for="tag in (videoData.tags||'').split(',').filter(t=>t.trim())" :key="tag">
+                      <span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full text-xs" x-text="'#'+tag.trim()"></span>
+                    </template>
+                  </div>
+
+                  <!-- 操作 -->
+                  <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                    <a x-show="videoData.video_url" :href="videoData.video_url" target="_blank"
+                      class="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                      ⬇ 无水印下载
+                    </a>
+                    <span class="flex items-center gap-1 text-xs text-emerald-500">✓ 已同步至飞书</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- 竞品雷达 -->
+        <div x-show="tab==='competitor'" class="p-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">竞品账号雷达</h2>
+          <p class="text-sm text-gray-500 mb-6">添加竞品账号，追踪视频数据表现</p>
+
+          <div class="flex gap-3 mb-6">
+            <input type="text" x-model="uniqueId" @keydown.enter="addAccount" placeholder="输入抖音号 unique_id"
+              class="flex-1 max-w-sm px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+            <select x-model="accountCategory" class="px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white">
+              <option value="竞品">竞品</option>
+              <option value="自己主号">自己主号</option>
+              <option value="矩阵号">矩阵号</option>
+            </select>
+            <button @click="addAccount" :disabled="addingAccount || !uniqueId.trim()"
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-xl text-sm font-medium flex items-center gap-2 transition-colors">
+              <svg x-show="!addingAccount" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <svg x-show="addingAccount" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              添加
+            </button>
+          </div>
+
+          <div x-show="accountError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="accountError"></div>
+
+          <!-- 账号卡片 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8" x-show="accounts.length">
+            <template x-for="acc in accounts" :key="acc.account_id || acc.unique_id">
+              <div @click="selectAccount(acc)"
+                class="bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md"
+                :class="selectedAccount?.account_id === acc.account_id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200'">
+                <div class="flex items-center gap-3 mb-3">
+                  <img x-show="acc.avatar_url" :src="acc.avatar_url" class="w-12 h-12 rounded-full">
+                  <div class="w-12 h-12 bg-gray-200 rounded-full" x-show="!acc.avatar_url"></div>
+                  <div class="min-w-0">
+                    <p class="font-medium text-gray-800 truncate" x-text="acc.nickname || acc.unique_id"></p>
+                    <p class="text-xs text-gray-400">@<span x-text="acc.unique_id"></span></p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                  <div><p class="font-semibold text-gray-700" x-text="fmtNum(acc.follower_count)"></p><p class="text-gray-400">粉丝</p></div>
+                  <div><p class="font-semibold text-gray-700" x-text="acc.video_count"></p><p class="text-gray-400">作品</p></div>
+                  <div><p class="font-semibold text-gray-700" x-text="fmtNum(acc.total_favorited)"></p><p class="text-gray-400">获赞</p></div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] px-2 py-0.5 rounded"
+                    :class="acc.category==='竞品' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'"
+                    x-text="acc.category"></span>
+                  <button @click.stop="syncAccount(acc)" :disabled="syncingId === acc.sec_user_id"
+                    class="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300">
+                    <svg :class="syncingId === acc.sec_user_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                    同步视频
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- 视频列表 -->
+          <div x-show="selectedAccount && competitorVideos.length">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-gray-800">
+                <span x-text="selectedAccount?.nickname"></span> 的视频
+                <span class="text-sm text-gray-400 font-normal ml-2">共 <span x-text="competitorVideos.length"></span> 条</span>
+              </h3>
+              <select x-model="sortBy" @change="sortVideos" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+                <option value="collect_rate">收藏率</option>
+                <option value="digg_count">点赞数</option>
+                <option value="comment_count">评论数</option>
+                <option value="play_count">播放量</option>
+                <option value="create_time">发布时间</option>
+              </select>
+            </div>
+            <div class="space-y-3">
+              <template x-for="v in competitorVideos" :key="v.aweme_id">
+                <div class="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow"
+                  :class="v.collect_rate >= 0.03 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200'">
+                  <div class="flex">
+                    <div class="w-32 h-24 shrink-0 bg-gray-100" x-show="v.cover_url">
+                      <img :src="v.cover_url" class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="flex-1 p-3 min-w-0">
+                      <p class="text-gray-800 text-sm line-clamp-2 mb-1" x-text="v.desc || '(无描述)'"></p>
+                      <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
+                        <span x-text="v.create_time"></span>
+                        <span x-show="v.is_co_creation" class="text-purple-500">🤝 共创</span>
+                      </div>
+                      <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                        <span>▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
+                        <span>❤ <span x-text="fmtNum(v.digg_count)" class="tabular-nums"></span></span>
+                        <span>💬 <span x-text="fmtNum(v.comment_count)" class="tabular-nums"></span></span>
+                        <span>⭐ <span x-text="fmtNum(v.collect_count)" class="tabular-nums"></span></span>
+                        <span class="font-semibold" :class="rateColorClass(v.collect_rate)">收藏率 <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <div x-show="!accounts.length" class="text-center py-20 text-gray-400">
+            <p class="text-lg mb-2">尚未添加竞品账号</p>
+            <p class="text-sm">输入抖音号开始追踪</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  </template>
+</div>
+
+<script>
+function app() {
+  return {
+    // 认证
+    authed: !!localStorage.getItem('site_password'),
+    password: '',
+    loginError: '',
+    loginLoading: false,
+
+    // 导航
+    tab: 'video',
+
+    // 视频解剖台
+    videoUrl: '',
+    videoLoading: false,
+    videoError: '',
+    videoData: null,
+
+    // 竞品雷达
+    uniqueId: '',
+    accountCategory: '竞品',
+    accounts: [],
+    addingAccount: false,
+    accountError: '',
+    syncingId: null,
+    selectedAccount: null,
+    competitorVideos: [],
+    sortBy: 'collect_rate',
+
+    // API 请求
+    async api(method, path, body = null) {
+      const headers = { 'Content-Type': 'application/json', 'X-Site-Password': localStorage.getItem('site_password') || '' };
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch('/api' + path, opts);
+      if (res.status === 401) { localStorage.removeItem('site_password'); this.authed = false; throw new Error('密码错误'); }
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || '请求失败'); }
+      return res.json();
+    },
+
+    // 登录
+    async login() {
+      this.loginLoading = true; this.loginError = '';
+      try {
+        await this.api('POST', '/auth/verify', { password: this.password });
+        localStorage.setItem('site_password', this.password);
+        this.authed = true;
+      } catch (e) { this.loginError = '密码错误，请重试'; }
+      this.loginLoading = false;
+    },
+
+    // 解析视频
+    async parseVideo() {
+      if (!this.videoUrl.trim()) return;
+      this.videoLoading = true; this.videoError = ''; this.videoData = null;
+      try {
+        this.videoData = await this.api('POST', '/video/parse', { url: this.videoUrl.trim() });
+      } catch (e) { this.videoError = e.message; }
+      this.videoLoading = false;
+    },
+
+    // 添加账号
+    async addAccount() {
+      if (!this.uniqueId.trim()) return;
+      this.addingAccount = true; this.accountError = '';
+      try {
+        const acc = await this.api('POST', '/account/add', { unique_id: this.uniqueId.trim(), category: this.accountCategory });
+        this.accounts.push(acc);
+        this.uniqueId = '';
+      } catch (e) { this.accountError = e.message; }
+      this.addingAccount = false;
+    },
+
+    // 同步视频
+    async syncAccount(acc) {
+      this.syncingId = acc.sec_user_id; this.accountError = '';
+      try {
+        const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
+        this.selectedAccount = acc;
+        this.competitorVideos = result.videos || [];
+        this.sortVideos();
+      } catch (e) { this.accountError = e.message; }
+      this.syncingId = null;
+    },
+
+    selectAccount(acc) { this.selectedAccount = acc; },
+
+    sortVideos() {
+      const key = this.sortBy;
+      this.competitorVideos.sort((a, b) => {
+        if (key === 'create_time') return String(b[key] || '').localeCompare(String(a[key] || ''));
+        return (b[key] || 0) - (a[key] || 0);
+      });
+    },
+
+    // 计算属性
+    get videoStats() {
+      if (!this.videoData) return [];
+      const d = this.videoData;
+      return [
+        { label: '播放量', value: d.play_count },
+        { label: '点赞', value: d.digg_count },
+        { label: '评论', value: d.comment_count },
+        { label: '收藏', value: d.collect_count },
+        { label: '转发', value: d.share_count },
+      ];
+    },
+
+    // 工具函数
+    fmtNum(n) {
+      if (n >= 1e8) return (n / 1e8).toFixed(1) + '亿';
+      if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
+      return String(n || 0);
+    },
+    fmtRate(r) { return (r * 100).toFixed(2) + '%'; },
+    fmtDuration(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); },
+    rateColorClass(r) { return r >= 0.05 ? 'text-red-500' : r >= 0.03 ? 'text-amber-500' : 'text-emerald-500'; },
+    rateBgClass(r) { return r >= 0.05 ? 'bg-red-50 border-red-200' : r >= 0.03 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'; },
+  }
+}
+</script>
+</body>
+</html>
