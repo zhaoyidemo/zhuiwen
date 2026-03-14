@@ -29,6 +29,35 @@ async def parse_video(req: VideoParseRequest):
     return video
 
 
+@router.post("/batch-stats")
+async def batch_video_stats(aweme_ids: list[str]):
+    """批量获取视频播放量（每次建议传2个ID）"""
+    if not aweme_ids:
+        return JSONResponse(content={"stats": {}})
+    ids_str = ",".join(aweme_ids[:5])  # 最多5个
+    try:
+        stats = await tikhub_service.fetch_video_statistics(ids_str)
+        # fetch_video_statistics 返回第一条，改为返回全部
+        data = await tikhub_service._request(
+            "GET",
+            "/api/v1/douyin/app/v3/fetch_video_statistics",
+            params={"aweme_ids": ids_str},
+        )
+        stats_list = data.get("data", {}).get("statistics_list", []) or []
+        result = {}
+        for s in stats_list:
+            if isinstance(s, dict) and s.get("aweme_id"):
+                result[str(s["aweme_id"])] = {
+                    "play_count": s.get("play_count", 0) or 0,
+                    "digg_count": s.get("digg_count", 0) or 0,
+                    "share_count": s.get("share_count", 0) or 0,
+                }
+        return JSONResponse(content={"stats": result})
+    except Exception as e:
+        logger.warning(f"批量统计失败: {e}")
+        return JSONResponse(content={"stats": {}})
+
+
 @router.get("/{aweme_id}/extended")
 async def get_video_extended(aweme_id: str, duration: int = 0):
     """获取视频扩展数据：评论热词、弹幕"""

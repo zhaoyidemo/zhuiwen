@@ -246,10 +246,8 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
     )
 
     result_data = data.get("data", {})
-    # TikHub 可能多层嵌套: data.data.aweme_list
     if isinstance(result_data, dict):
         aweme_list = result_data.get("aweme_list", []) or []
-        # 如果 aweme_list 为空，尝试内层 data
         if not aweme_list and isinstance(result_data.get("data"), dict):
             inner = result_data["data"]
             aweme_list = inner.get("aweme_list", []) or []
@@ -263,15 +261,6 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
         has_more = False
         next_cursor = 0
 
-    # 日志：看数据结构
-    if aweme_list and isinstance(aweme_list[0], dict):
-        first = aweme_list[0]
-        first_stats = first.get("statistics", {})
-        logger.info(f"视频数据结构: statistics={first_stats}, desc={str(first.get('desc',''))[:30]}")
-    else:
-        rd_keys = list(result_data.keys()) if isinstance(result_data, dict) else type(result_data).__name__
-        logger.info(f"result_data keys: {rd_keys}, aweme_list len={len(aweme_list)}")
-
     videos = [_parse_video_data(item) for item in aweme_list if isinstance(item, dict)]
 
     return {
@@ -282,7 +271,7 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
 
 
 async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
-    """拉取用户全部视频（自动分页），然后批量补充播放量"""
+    """拉取用户全部视频（自动分页）"""
     all_videos = []
     cursor = 0
     while True:
@@ -292,9 +281,6 @@ async def fetch_all_user_videos(sec_user_id: str) -> list[VideoData]:
         if not result["has_more"]:
             break
         cursor = result["next_cursor"]
-
-    # 批量补充播放量（每次最多20个）
-    await _batch_fill_play_count(all_videos)
     return all_videos
 
 

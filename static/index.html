@@ -281,8 +281,8 @@
                 </div>
                 <!-- 同步后的汇总数据 -->
                 <div x-show="acc._synced" class="grid grid-cols-2 gap-2 text-center text-xs mb-3 pt-2 border-t border-gray-100">
-                  <div><p class="font-semibold" :class="rateColorClass(acc._avgCollectRate)" x-text="fmtRate(acc._avgCollectRate)"></p><p class="text-gray-400">平均收藏率</p></div>
-                  <div><p class="font-semibold" :class="rateColorClass(acc._topCollectRate)" x-text="fmtRate(acc._topCollectRate)"></p><p class="text-gray-400">最高收藏率</p></div>
+                  <div><p class="font-semibold" :class="rateColorClass(acc._avgCollectRate)" x-text="fmtRate(acc._avgCollectRate)"></p><p class="text-gray-400">平均收藏/赞</p></div>
+                  <div><p class="font-semibold" :class="rateColorClass(acc._topCollectRate)" x-text="fmtRate(acc._topCollectRate)"></p><p class="text-gray-400">最高收藏/赞</p></div>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-[10px] px-2 py-0.5 rounded"
@@ -306,6 +306,12 @@
                 <span class="text-sm text-gray-400 font-normal ml-2">共 <span x-text="competitorVideos.length"></span> 条</span>
               </h3>
               <div class="flex items-center gap-2">
+                <button @click="fillPlayCount" :disabled="fillingPlay"
+                  class="px-3 py-1.5 border rounded-lg text-sm flex items-center gap-1 transition-colors"
+                  :class="fillingPlay ? 'border-gray-200 text-gray-400' : 'border-blue-300 text-blue-600 hover:bg-blue-50'">
+                  <svg x-show="fillingPlay" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  <span x-text="fillingPlay ? fillProgress : '补充播放量'"></span>
+                </button>
                 <select x-model="sortBy" @change="sortVideos" class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
                   <option value="collect_rate">收藏率</option>
                   <option value="digg_count">点赞数</option>
@@ -336,12 +342,15 @@
                         <span x-show="v.tags" class="text-blue-400 truncate max-w-[200px]" x-text="v.tags"></span>
                       </div>
                       <div class="flex flex-wrap gap-3 text-xs text-gray-500">
-                        <span>▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
+                        <span x-show="v.play_count">▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
                         <span>❤ <span x-text="fmtNum(v.digg_count)" class="tabular-nums"></span></span>
                         <span>💬 <span x-text="fmtNum(v.comment_count)" class="tabular-nums"></span></span>
                         <span>⭐ <span x-text="fmtNum(v.collect_count)" class="tabular-nums"></span></span>
                         <span>↗ <span x-text="fmtNum(v.share_count)" class="tabular-nums"></span></span>
-                        <span class="font-semibold" :class="rateColorClass(v.collect_rate)">收藏率 <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span></span>
+                        <span class="font-semibold" :class="rateColorClass(v.collect_rate)">
+                          <span x-text="v.play_count > 0 ? '收藏率' : '收藏/赞'"></span>
+                          <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span>
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -390,6 +399,8 @@ function app() {
     selectedAccount: null,
     competitorVideos: [],
     sortBy: 'collect_rate',
+    fillingPlay: false,
+    fillProgress: '',
 
     // API 请求
     async api(method, path, body = null) {
@@ -508,6 +519,50 @@ function app() {
     },
 
     selectAccount(acc) { this.selectedAccount = acc; },
+
+    // 逐批补充播放量（每次2个）
+    async fillPlayCount() {
+      if (this.fillingPlay || !this.competitorVideos.length) return;
+      this.fillingPlay = true;
+      const cache = JSON.parse(localStorage.getItem('zw_play_cache') || '{}');
+      // 先从缓存恢复已有数据
+      let cached = 0;
+      this.competitorVideos.forEach(v => {
+        if (cache[v.aweme_id]) {
+          v.play_count = cache[v.aweme_id];
+          v.collect_rate = v.play_count > 0 ? v.collect_count / v.play_count : (v.digg_count > 0 ? v.collect_count / v.digg_count : 0);
+          cached++;
+        }
+      });
+      // 找出还没有播放量的视频
+      const todo = this.competitorVideos.filter(v => !v.play_count && v.aweme_id);
+      const total = todo.length;
+      if (!total) { this.fillProgress = `全部 ${this.competitorVideos.length} 条已有播放量`; this.fillingPlay = false; this.sortVideos(); return; }
+      let done = 0, filled = 0;
+      for (let i = 0; i < total; i += 2) {
+        const batch = todo.slice(i, i + 2);
+        const ids = batch.map(v => v.aweme_id);
+        this.fillProgress = `正在获取... ${done}/${total}`;
+        try {
+          const res = await this.api('POST', '/video/batch-stats', ids);
+          const stats = res.stats || {};
+          batch.forEach(v => {
+            const s = stats[v.aweme_id];
+            if (s && s.play_count > 0) {
+              v.play_count = s.play_count;
+              v.collect_rate = v.collect_count / s.play_count;
+              cache[v.aweme_id] = s.play_count;
+              filled++;
+            }
+          });
+        } catch (e) { /* 继续下一批 */ }
+        done += batch.length;
+      }
+      localStorage.setItem('zw_play_cache', JSON.stringify(cache));
+      this.fillProgress = `完成！${filled}/${total} 条获取到播放量`;
+      this.fillingPlay = false;
+      this.sortVideos();
+    },
 
     sortVideos() {
       const key = this.sortBy;
