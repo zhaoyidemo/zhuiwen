@@ -84,7 +84,7 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
     # 播放量为 0 时，用点赞数估算播放量来计算收藏率（抖音部分端点不返回播放量）
     denominator = play_count if play_count > 0 else digg_count
     collect_rate = round(collect_count / denominator, 6) if denominator > 0 else 0.0
-    engagement_rate = round((digg_count + comment_count + share_count + collect_count) / denominator, 6) if denominator > 0 else 0.0
+    engagement_rate = round((digg_count + comment_count + share_count + collect_count) / play_count, 6) if play_count > 0 else 0.0
 
     # 提取话题标签
     text_extra = item.get("text_extra", []) or []
