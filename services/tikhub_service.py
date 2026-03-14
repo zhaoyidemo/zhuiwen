@@ -483,7 +483,7 @@ async def fetch_kol_data_overview(kol_id: str) -> dict:
     # V1 fallback
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1",
-                              params={"kolId": kol_id, "_type": 1, "_range": 7, "onlyAssign": 0})
+                              params={"kolId": kol_id, "_type": "1", "_range": "_1", "onlyAssign": "0"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
@@ -594,32 +594,33 @@ async def fetch_kol_base_info(kol_id: str) -> dict:
 
 
 async def fetch_kol_service_price(kol_id: str) -> dict:
-    """获取 KOL 商单报价 — 尝试多种参数组合"""
-    # 尝试不同 platformChannel 值
-    for pc in ["1", "douyin", "2", ""]:
-        try:
-            params = {"kolId": kol_id}
-            if pc:
-                params["platformChannel"] = pc
-            data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1", params=params)
-            result = data.get("data", {})
-            if isinstance(result, dict) and "data" in result:
-                result = result.get("data", {})
-            logger.info(f"商单报价成功(platformChannel={pc}): {list(result.keys()) if isinstance(result, dict) else type(result)}")
-            return result
-        except Exception as e:
-            logger.warning(f"商单报价(platformChannel={pc})失败: {e}")
-    # V2 商业卡片作为兜底
+    """获取 KOL 商单报价 — V2 商业卡片 + V1 报价"""
+    result = {}
+    # V2 商业卡片（稳定可用）
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_business_card_info",
                               params={"o_author_id": kol_id})
-        result = data.get("data", {})
-        if isinstance(result, dict) and "data" in result:
-            return result.get("data", {})
-        return result
+        r = data.get("data", {})
+        if isinstance(r, dict) and "data" in r:
+            r = r.get("data", {})
+        if isinstance(r, dict):
+            result.update(r)
+            logger.info(f"商业卡片(V2)字段: {list(r.keys())}")
     except Exception as e:
         logger.warning(f"获取商业卡片(V2)失败: {e}")
-        return {}
+    # V1 报价（补充，可能失败）
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
+                              params={"kolId": kol_id, "platformChannel": "1"})
+        r = data.get("data", {})
+        if isinstance(r, dict) and "data" in r:
+            r = r.get("data", {})
+        if isinstance(r, dict):
+            result.update(r)
+            logger.info(f"商单报价(V1)字段: {list(r.keys())}")
+    except Exception as e:
+        logger.warning(f"商单报价(V1)失败（正常，V1可能已弃用）: {e}")
+    return result
 
 
 async def fetch_kol_cp_info(kol_id: str) -> dict:
@@ -636,8 +637,8 @@ async def fetch_kol_cp_info(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_conversion_ability(kol_id: str, _range: int = 7) -> dict:
-    """获取 KOL 转化能力分析"""
+async def fetch_kol_conversion_ability(kol_id: str, _range: str = "_1") -> dict:
+    """获取 KOL 转化能力分析（_range: _1=7天, _2=30天, _3=90天）"""
     try:
         params = {"kolId": kol_id, "_range": _range}
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_conversion_ability_analysis_v1",
