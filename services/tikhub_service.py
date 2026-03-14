@@ -446,19 +446,41 @@ async def fetch_kol_audience_portrait(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_data_overview(kol_id: str) -> dict:
-    """获取 KOL 数据概览 — 优先 V2 传播价值，失败回退 V1"""
-    # V2: get_author_spread_info
+async def _fetch_spread_info(kol_id: str, **extra_params) -> dict:
+    """调用 V2 get_author_spread_info 的通用方法"""
     try:
-        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_spread_info",
-                              params={"o_author_id": kol_id, "platform_source": "1", "platform_channel": "1"})
+        params = {"o_author_id": kol_id, "platform_source": "1", "platform_channel": "1"}
+        params.update(extra_params)
+        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_spread_info", params=params)
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
-        return result
+        return result if isinstance(result, dict) else {}
     except Exception as e:
-        logger.warning(f"获取传播价值(V2)失败: {e}")
-    # V1 fallback: 用整数参数
+        logger.warning(f"获取传播价值(params={extra_params})失败: {e}")
+        return {}
+
+
+async def fetch_kol_data_overview(kol_id: str) -> dict:
+    """获取 KOL 数据概览 — 并发拉取多个维度的 V2 传播价值数据"""
+    import asyncio
+    # 并发拉不同维度: 默认、近7天、近30天
+    results = await asyncio.gather(
+        _fetch_spread_info(kol_id),
+        _fetch_spread_info(kol_id, range="7"),
+        _fetch_spread_info(kol_id, range="30"),
+    )
+    # 合并所有结果（后面的不覆盖前面已有的）
+    merged = {}
+    for r in results:
+        if isinstance(r, dict):
+            for k, v in r.items():
+                if k not in merged and v is not None:
+                    merged[k] = v
+    if merged:
+        logger.info(f"数据概览合并后字段: {list(merged.keys())}")
+        return merged
+    # V1 fallback
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1",
                               params={"kolId": kol_id, "_type": 1, "_range": 7, "onlyAssign": 0})
