@@ -817,6 +817,7 @@ function app() {
             if (s && s.play_count > 0) {
               v.play_count = s.play_count;
               v.collect_rate = v.collect_count / s.play_count;
+              v.engagement_rate = (v.digg_count + v.comment_count + v.share_count + v.collect_count) / s.play_count;
               filled++;
             }
           });
