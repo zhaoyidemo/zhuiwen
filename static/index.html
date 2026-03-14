@@ -481,6 +481,15 @@ function app() {
 
     // 同步视频
     async syncAccount(acc) {
+      // 如果 sec_user_id 为空，重新拉取账号信息
+      if (!acc.sec_user_id && acc.unique_id) {
+        try {
+          const fresh = await this.api('POST', '/account/add', { unique_id: acc.unique_id, category: acc.category || '竞品' });
+          Object.assign(acc, fresh);
+          this.saveAccounts();
+        } catch (e) { this.accountError = '刷新账号信息失败: ' + e.message; return; }
+      }
+      if (!acc.sec_user_id) { this.accountError = '该账号缺少 sec_user_id，请删除后重新添加'; return; }
       this.syncingId = acc.sec_user_id; this.accountError = '';
       try {
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
