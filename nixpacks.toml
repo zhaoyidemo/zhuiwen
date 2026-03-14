@@ -4,8 +4,8 @@ nixPkgs = ["python312", "nodejs_20"]
 [phases.install]
 cmds = [
   "cd frontend && npm install --legacy-peer-deps",
-  "python3 -m ensurepip --upgrade",
-  "python3 -m pip install -r backend/requirements.txt"
+  "python3 -m venv /app/venv",
+  "/app/venv/bin/pip install -r backend/requirements.txt"
 ]
 
 [phases.build]
@@ -14,4 +14,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd backend && python3 -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "cd backend && /app/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
