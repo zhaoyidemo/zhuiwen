@@ -1,6 +1,8 @@
 import logging
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 from models.schemas import AccountAddRequest, AccountData
 from services import tikhub_service, feishu_service
@@ -31,7 +33,7 @@ async def add_account(req: AccountAddRequest):
 
 @router.post("/{sec_user_id}/sync")
 async def sync_account_videos(sec_user_id: str):
-    """同步账号的所有视频数据到飞书"""
+    """同步账号的所有视频数据"""
     try:
         videos = await tikhub_service.fetch_all_user_videos(sec_user_id)
     except Exception as e:
@@ -46,12 +48,16 @@ async def sync_account_videos(sec_user_id: str):
     except Exception as e:
         logger.warning(f"批量写入飞书失败: {e}")
 
-    return {
-        "message": f"同步完成，共 {len(videos)} 条视频",
-        "total": len(videos),
+    # 显式序列化 Pydantic 对象
+    videos_data = jsonable_encoder(videos)
+    logger.info(f"同步完成: {len(videos_data)} 条视频, 第一条: {videos_data[0].get('desc', '')[:30] if videos_data else 'N/A'}")
+
+    return JSONResponse(content={
+        "message": f"同步完成，共 {len(videos_data)} 条视频",
+        "total": len(videos_data),
         "synced_to_feishu": synced_count,
-        "videos": videos,
-    }
+        "videos": videos_data,
+    })
 
 
 @router.get("/list")
@@ -78,7 +84,6 @@ async def get_account_videos(
         logger.warning(f"从飞书读取视频失败: {e}")
         videos = []
 
-    # 本地排序
     reverse = order == "desc"
     try:
         videos.sort(key=lambda v: v.get(sort_by, 0) or 0, reverse=reverse)
