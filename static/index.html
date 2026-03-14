@@ -454,88 +454,30 @@
                 </div>
               </div>
 
-              <!-- 粉丝画像卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && xingtuData.fans_portrait.distributions && xingtuData.fans_portrait.distributions.length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝画像</h4>
-                <template x-if="Array.isArray(xingtuData.fans_portrait?.distributions)">
-                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <template x-for="(dist, dIdx) in xingtuData.fans_portrait.distributions" :key="dIdx">
-                      <div class="bg-blue-50/30 rounded-xl p-4 border border-blue-100">
-                        <h5 class="text-sm font-semibold text-gray-800 mb-0.5" x-text="dist.type_display || '分布'"></h5>
-                        <p class="text-xs text-blue-600 mb-3" x-show="dist.description" x-text="dist.description"></p>
-                        <div class="space-y-1.5">
-                          <template x-for="(item, iIdx) in (dist.distribution_list || []).slice(0, 10)" :key="iIdx">
-                            <div class="flex items-center gap-2">
-                              <span class="text-xs text-gray-600 w-20 shrink-0 text-right truncate" x-text="item.key" :title="item.key"></span>
-                              <div class="flex-1 bg-blue-100/60 rounded-full h-5 overflow-hidden">
-                                <div class="h-full bg-blue-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                                  :style="'width:' + Math.max(item.value || 0, 3) + '%'">
-                                  <span class="text-[10px] text-white font-medium whitespace-nowrap" x-show="item.value >= 12" x-text="item.value + '%'"></span>
-                                </div>
-                              </div>
-                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums text-right" x-text="item.value + '%'"></span>
-                            </div>
-                          </template>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                </template>
-                <!-- 兜底：非 distributions 结构 -->
-                <template x-if="!Array.isArray(xingtuData.fans_portrait?.distributions)">
-                  <div class="space-y-4">
-                    <template x-for="key in Object.keys(xingtuData.fans_portrait || {}).filter(k => xingtuShouldShow(k))" :key="key">
-                      <div>
-                        <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                        <template x-if="typeof xingtuData.fans_portrait[key] !== 'object'">
-                          <p class="text-sm text-gray-700" x-text="xingtuData.fans_portrait[key]"></p>
-                        </template>
-                      </div>
-                    </template>
-                  </div>
-                </template>
+              <!-- 粉丝画像（精简：只用描述文字 + top3 条形图） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait?.distributions?.length">
+                <h4 class="text-base font-semibold text-gray-800 mb-3">粉丝画像</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <template x-for="(dist, dIdx) in (xingtuData.fans_portrait?.distributions || []).filter(d => d.description)" :key="dIdx">
+                    <div class="bg-blue-50/40 rounded-xl px-4 py-3">
+                      <p class="text-xs font-semibold text-gray-700 mb-1" x-text="dist.type_display"></p>
+                      <p class="text-xs text-blue-600" x-text="dist.description"></p>
+                    </div>
+                  </template>
+                </div>
               </div>
 
-              <!-- 观众画像卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && xingtuData.audience_portrait.distributions && xingtuData.audience_portrait.distributions.length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">观众画像</h4>
-                <template x-if="Array.isArray(xingtuData.audience_portrait?.distributions)">
-                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <template x-for="(dist, dIdx) in xingtuData.audience_portrait.distributions" :key="dIdx">
-                      <div class="bg-emerald-50/30 rounded-xl p-4 border border-emerald-100">
-                        <h5 class="text-sm font-semibold text-gray-800 mb-0.5" x-text="dist.type_display || '分布'"></h5>
-                        <p class="text-xs text-emerald-600 mb-3" x-show="dist.description" x-text="dist.description"></p>
-                        <div class="space-y-1.5">
-                          <template x-for="(item, iIdx) in (dist.distribution_list || []).slice(0, 10)" :key="iIdx">
-                            <div class="flex items-center gap-2">
-                              <span class="text-xs text-gray-600 w-20 shrink-0 text-right truncate" x-text="item.key" :title="item.key"></span>
-                              <div class="flex-1 bg-emerald-100/60 rounded-full h-5 overflow-hidden">
-                                <div class="h-full bg-emerald-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                                  :style="'width:' + Math.max(item.value || 0, 3) + '%'">
-                                  <span class="text-[10px] text-white font-medium whitespace-nowrap" x-show="item.value >= 12" x-text="item.value + '%'"></span>
-                                </div>
-                              </div>
-                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums text-right" x-text="item.value + '%'"></span>
-                            </div>
-                          </template>
-                        </div>
-                      </div>
-                    </template>
-                  </div>
-                </template>
-                <!-- 兜底：非 distributions 结构 -->
-                <template x-if="!Array.isArray(xingtuData.audience_portrait?.distributions)">
-                  <div class="space-y-4">
-                    <template x-for="key in Object.keys(xingtuData.audience_portrait || {}).filter(k => xingtuShouldShow(k))" :key="key">
-                      <div>
-                        <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                        <template x-if="typeof xingtuData.audience_portrait[key] !== 'object'">
-                          <p class="text-sm text-gray-700" x-text="xingtuData.audience_portrait[key]"></p>
-                        </template>
-                      </div>
-                    </template>
-                  </div>
-                </template>
+              <!-- 观众画像（精简：只用描述文字） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait?.distributions?.length">
+                <h4 class="text-base font-semibold text-gray-800 mb-3">观众画像</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <template x-for="(dist, dIdx) in (xingtuData.audience_portrait?.distributions || []).filter(d => d.description)" :key="dIdx">
+                    <div class="bg-emerald-50/40 rounded-xl px-4 py-3">
+                      <p class="text-xs font-semibold text-gray-700 mb-1" x-text="dist.type_display"></p>
+                      <p class="text-xs text-emerald-600" x-text="dist.description"></p>
+                    </div>
+                  </template>
+                </div>
               </div>
 
               <!-- 商业信息卡片 -->
@@ -642,58 +584,24 @@
                 </div>
               </div>
 
-              <!-- 粉丝趋势表格 -->
+              <!-- 近30天粉丝变化（精简为一行数字） -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuHasDailyFans()">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝趋势</h4>
-                <div class="overflow-x-auto">
-                  <table class="w-full text-sm">
-                    <thead>
-                      <tr class="border-b border-gray-200 bg-gray-50">
-                        <template x-for="col in xingtuDailyFansCols()" :key="col">
-                          <th class="text-left py-2.5 px-3 text-xs text-gray-500 font-semibold" x-text="xingtuLabel(col)"></th>
-                        </template>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template x-for="(row, idx) in xingtuDailyFansRows()" :key="idx">
-                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                          <template x-for="col in xingtuDailyFansCols()" :key="col">
-                            <td class="py-2 px-3 text-gray-700 tabular-nums" x-text="typeof row[col] === 'number' ? fmtNum(row[col]) : row[col]"></td>
-                          </template>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- 视频表现卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).filter(k => xingtuShouldShow(k)).length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">视频表现</h4>
-                <!-- 数值指标网格 -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
-                  <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k) && (typeof xingtuData.video_performance[k] === 'number' || typeof xingtuData.video_performance[k] === 'string'))" :key="key">
-                    <div class="text-center p-3 bg-gray-50 rounded-xl">
-                      <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="typeof xingtuData.video_performance[key] === 'number' ? fmtNum(xingtuData.video_performance[key]) : xingtuData.video_performance[key]"></p>
-                      <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
-                    </div>
-                  </template>
-                </div>
-                <!-- 视频列表 -->
-                <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => Array.isArray(xingtuData.video_performance[k]) && xingtuData.video_performance[k].length > 0)" :key="key">
+                <h4 class="text-base font-semibold text-gray-800 mb-3">近30天粉丝变化</h4>
+                <div class="flex items-center gap-6">
                   <div>
-                    <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
-                    <div class="space-y-2">
-                      <template x-for="(item, idx) in xingtuData.video_performance[key].slice(0, 5)" :key="idx">
-                        <div class="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
-                          <span class="text-xs text-gray-400 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
-                          <span class="text-sm text-gray-700 truncate flex-1" x-text="item.title || item.desc || item.name || (typeof item === 'object' ? JSON.stringify(item) : item)"></span>
-                          <span class="text-xs text-gray-400 tabular-nums shrink-0" x-show="item.play_count" x-text="fmtNum(item.play_count) + '播放'"></span>
-                        </div>
-                      </template>
-                    </div>
+                    <p class="text-2xl font-bold tabular-nums" :class="xingtuFansSummary().net >= 0 ? 'text-emerald-600' : 'text-red-500'"
+                      x-text="(xingtuFansSummary().net >= 0 ? '+' : '') + fmtNum(xingtuFansSummary().net)"></p>
+                    <p class="text-xs text-gray-400 mt-1">净增长</p>
                   </div>
-                </template>
+                  <div>
+                    <p class="text-lg font-semibold text-emerald-600 tabular-nums" x-text="'+' + fmtNum(xingtuFansSummary().gained)"></p>
+                    <p class="text-xs text-gray-400 mt-1">新增</p>
+                  </div>
+                  <div>
+                    <p class="text-lg font-semibold text-red-400 tabular-nums" x-text="'-' + fmtNum(xingtuFansSummary().lost)"></p>
+                    <p class="text-xs text-gray-400 mt-1">流失</p>
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -1175,22 +1083,32 @@ function app() {
       }
       return false;
     },
-    xingtuDailyFansRows() {
-      const df = this.xingtuData?.daily_fans;
-      if (!df) return [];
-      if (Array.isArray(df)) return df.slice(0, 30);
-      if (typeof df === 'object') {
-        for (const v of Object.values(df)) {
-          if (Array.isArray(v) && v.length > 0) return v.slice(0, 30);
+    // 汇总30天粉丝增减
+    xingtuFansSummary() {
+      const rows = (() => {
+        const df = this.xingtuData?.daily_fans;
+        if (!df) return [];
+        if (Array.isArray(df)) return df;
+        if (typeof df === 'object') {
+          for (const v of Object.values(df)) {
+            if (Array.isArray(v) && v.length > 0) return v;
+          }
         }
-      }
-      return [];
-    },
-    xingtuDailyFansCols() {
-      const rows = this.xingtuDailyFansRows();
-      if (!rows.length) return [];
-      const first = rows[0];
-      return typeof first === 'object' && first !== null ? Object.keys(first) : [];
+        return [];
+      })();
+      let gained = 0, lost = 0;
+      rows.forEach(r => {
+        const g = r.new_fans_count || r.new_fans || r.incr || 0;
+        const l = r.lost_fans_count || r.lost_fans || r.decr || 0;
+        if (g > 0) gained += g;
+        if (l > 0) lost += l;
+        // 如果只有 net_increase
+        if (!g && !l && (r.net_increase || r.count)) {
+          const n = r.net_increase || r.count || 0;
+          if (n >= 0) gained += n; else lost += Math.abs(n);
+        }
+      });
+      return { net: gained - lost, gained, lost };
     },
 
     sortVideos() {
