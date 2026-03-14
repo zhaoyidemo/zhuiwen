@@ -596,37 +596,20 @@ async def fetch_kol_base_info(kol_id: str) -> dict:
 
 
 async def fetch_kol_service_price(kol_id: str) -> dict:
-    """获取 KOL 商单报价 — V2 商业卡片 + V1 报价"""
+    """获取 KOL 商单报价 — V1 接口，分别查视频(_1)和直播(_10)"""
     result = {}
-    # V2 商业卡片（稳定可用）
-    try:
-        data = await _request("GET", "/api/v1/douyin/xingtu_v2/get_author_business_card_info",
-                              params={"o_author_id": kol_id})
-        r = data.get("data", {})
-        if isinstance(r, dict) and "data" in r:
-            r = r.get("data", {})
-        # card_info 里才是真正的数据
-        if isinstance(r, dict) and "card_info" in r:
-            card = r.get("card_info", {})
-            if isinstance(card, dict):
-                r = card
-        if isinstance(r, dict):
-            result.update(r)
-            logger.info(f"商业卡片(V2)字段: {list(r.keys())}")
-    except Exception as e:
-        logger.warning(f"获取商业卡片(V2)失败: {e}")
-    # V1 报价（补充，可能失败）
-    try:
-        data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
-                              params={"kolId": kol_id, "platformChannel": "_1"})
-        r = data.get("data", {})
-        if isinstance(r, dict) and "data" in r:
-            r = r.get("data", {})
-        if isinstance(r, dict):
-            result.update(r)
-            logger.info(f"商单报价(V1)字段: {list(r.keys())}")
-    except Exception as e:
-        logger.warning(f"商单报价(V1)失败（正常，V1可能已弃用）: {e}")
+    for channel, label in [("_1", "视频"), ("_10", "直播")]:
+        try:
+            data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
+                                  params={"kolId": kol_id, "platformChannel": channel})
+            r = data.get("data", {})
+            if isinstance(r, dict) and "data" in r:
+                r = r.get("data", {})
+            if isinstance(r, dict):
+                result[label] = r
+                logger.info(f"商单报价({label})字段: {list(r.keys())}")
+        except Exception as e:
+            logger.warning(f"商单报价({label})失败: {e}")
     return result
 
 

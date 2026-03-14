@@ -449,15 +449,15 @@
               </div>
 
               <!-- 商单报价卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 1">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 0">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
-
-                <!-- price_info 报价详情 -->
-                <template x-if="xingtuData.service_price.price_info">
-                  <div class="mb-4">
-                    <template x-if="Array.isArray(xingtuData.service_price.price_info)">
-                      <div class="space-y-2">
-                        <template x-for="(p, idx) in xingtuData.service_price.price_info" :key="idx">
+                <template x-for="channel in Object.keys(xingtuData.service_price)" :key="channel">
+                  <div class="mb-5">
+                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2" x-text="channel === '视频' ? '抖音短视频' : '抖音直播'"></p>
+                    <!-- price_info 列表 -->
+                    <template x-if="Array.isArray(xingtuData.service_price[channel]?.price_info)">
+                      <div class="space-y-2 mb-2">
+                        <template x-for="(p, idx) in xingtuData.service_price[channel].price_info" :key="idx">
                           <div class="flex items-center justify-between py-3 px-4 bg-amber-50 rounded-lg">
                             <span class="text-sm text-gray-700" x-text="p.desc || p.name || p.type_name || p.price_type_name || ('报价' + (idx+1))"></span>
                             <span class="text-lg font-bold text-amber-600 tabular-nums" x-text="'¥' + fmtNum(p.price || p.amount || p.value || 0)"></span>
@@ -465,40 +465,18 @@
                         </template>
                       </div>
                     </template>
-                    <template x-if="typeof xingtuData.service_price.price_info === 'object' && !Array.isArray(xingtuData.service_price.price_info)">
-                      <div class="space-y-2">
-                        <template x-for="key in Object.keys(xingtuData.service_price.price_info).filter(k => xingtuShouldShow(k))" :key="key">
-                          <div class="flex items-center justify-between py-3 px-4 bg-amber-50 rounded-lg">
-                            <span class="text-sm text-gray-700" x-text="xingtuLabel(key)"></span>
-                            <span class="text-lg font-bold text-amber-600 tabular-nums"
-                              x-text="typeof xingtuData.service_price.price_info[key] === 'number' ? '¥' + fmtNum(xingtuData.service_price.price_info[key]) : xingtuData.service_price.price_info[key]"></span>
-                          </div>
-                        </template>
-                      </div>
-                    </template>
+                    <!-- 其他字段 -->
+                    <div class="space-y-1">
+                      <template x-for="key in Object.keys(xingtuData.service_price[channel] || {}).filter(k => k !== 'price_info' && xingtuData.service_price[channel][k] !== null && xingtuData.service_price[channel][k] !== '')" :key="key">
+                        <div class="flex items-center justify-between py-2 px-4 bg-gray-50 rounded-lg">
+                          <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-gray-800 tabular-nums"
+                            x-text="typeof xingtuData.service_price[channel][key] === 'number' ? fmtNum(xingtuData.service_price[channel][key]) : (xingtuData.service_price[channel][key] === true ? '是' : xingtuData.service_price[channel][key] === false ? '否' : String(xingtuData.service_price[channel][key]))"></span>
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </template>
-
-                <!-- industry_tags 行业标签 -->
-                <div x-show="xingtuData.service_price.industry_tags && Array.isArray(xingtuData.service_price.industry_tags) && xingtuData.service_price.industry_tags.length" class="mb-4">
-                  <p class="text-xs text-gray-500 mb-2">行业标签</p>
-                  <div class="flex flex-wrap gap-2">
-                    <template x-for="(t, i) in xingtuData.service_price.industry_tags" :key="i">
-                      <span class="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs" x-text="typeof t === 'object' ? (t.name || t.label || JSON.stringify(t)) : t"></span>
-                    </template>
-                  </div>
-                </div>
-
-                <!-- 其他字段（只过滤系统字段） -->
-                <div class="space-y-2">
-                  <template x-for="key in xingtuCleanKeys(xingtuData.service_price).filter(k => !['price_info','industry_tags','activity_info','hot_list_ranks','avatar_uri','nick_name','short_id','lark_nick_name','author_avatar_frame_icon','contact_status','privacy_status','show_wechat','star_excellent_author'].includes(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
-                    <div class="flex items-center justify-between py-2 px-4 bg-gray-50 rounded-lg">
-                      <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
-                      <span class="text-sm font-semibold text-gray-800 tabular-nums"
-                        x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : (xingtuData.service_price[key] === true ? '是' : xingtuData.service_price[key] === false ? '否' : String(xingtuData.service_price[key]))"></span>
-                    </div>
-                  </template>
-                </div>
               </div>
 
 
