@@ -283,10 +283,10 @@
 
           <!-- 账号卡片 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8" x-show="accounts.length">
-            <template x-for="acc in accounts" :key="acc.account_id || acc.unique_id">
+            <template x-for="acc in accounts" :key="acc.sec_user_id || acc.unique_id">
               <div @click="selectAccount(acc)"
                 class="bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md relative group"
-                :class="selectedAccount?.account_id === acc.account_id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200'">
+                :class="selectedAccount?.sec_user_id === acc.sec_user_id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200'">
                 <!-- 删除按钮 -->
                 <button @click.stop="removeAccount(acc)"
                   class="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-100 text-gray-400 hover:bg-red-100 hover:text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs">×</button>
@@ -527,10 +527,11 @@ function app() {
 
     // 删除账号
     removeAccount(acc) {
-      this.accounts = this.accounts.filter(a => a.account_id !== acc.account_id);
+      const uid = acc.sec_user_id || acc.unique_id;
+      this.accounts = this.accounts.filter(a => (a.sec_user_id || a.unique_id) !== uid);
       this.saveAccounts();
       localStorage.removeItem('zw_vids_' + acc.sec_user_id);
-      if (this.selectedAccount?.account_id === acc.account_id) {
+      if (this.selectedAccount && (this.selectedAccount.sec_user_id || this.selectedAccount.unique_id) === uid) {
         this.selectedAccount = null;
         this.competitorVideos = [];
       }
