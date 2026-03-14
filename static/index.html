@@ -342,16 +342,15 @@
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                   星图分析
-                  <span class="text-xs text-gray-400 font-normal" x-text="'kolId: ' + xingtuData.kol_id"></span>
                 </h3>
                 <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
               </div>
 
               <!-- KOL 基本信息卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">基本信息</h4>
                 <div class="space-y-3">
-                  <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => xingtuShouldShow(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.base_info[key] === 'string' || typeof xingtuData.base_info[key] === 'number'">
                         <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
@@ -375,7 +374,7 @@
               </div>
 
               <!-- 星图指数卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   <template x-for="key in Object.keys(xingtuData.xingtu_index || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k) && (typeof xingtuData.xingtu_index[k] === 'number' || typeof xingtuData.xingtu_index[k] === 'string'))" :key="key">
@@ -391,7 +390,7 @@
               </div>
 
               <!-- 性价比分析卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
                 <!-- 预估播放量 -->
                 <div class="mb-4 flex items-center gap-2" x-show="xingtuData.cp_info.expect_vv">
@@ -442,7 +441,7 @@
                 </div>
                 <!-- 其他 cp_info 字段的兜底展示 -->
                 <div class="space-y-2 mt-3">
-                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message','expect_cpe','expect_cpm','expect_vv','hot_item'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => xingtuShouldShow(k) && !['expect_cpe','expect_cpm','expect_vv','hot_item'].includes(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.cp_info[key] === 'number' || typeof xingtuData.cp_info[key] === 'string'">
                         <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
@@ -485,7 +484,7 @@
                 <!-- 兜底：非 distributions 结构 -->
                 <template x-if="!Array.isArray(xingtuData.fans_portrait?.distributions)">
                   <div class="space-y-4">
-                    <template x-for="key in Object.keys(xingtuData.fans_portrait || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <template x-for="key in Object.keys(xingtuData.fans_portrait || {}).filter(k => xingtuShouldShow(k))" :key="key">
                       <div>
                         <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
                         <template x-if="typeof xingtuData.fans_portrait[key] !== 'object'">
@@ -527,7 +526,7 @@
                 <!-- 兜底：非 distributions 结构 -->
                 <template x-if="!Array.isArray(xingtuData.audience_portrait?.distributions)">
                   <div class="space-y-4">
-                    <template x-for="key in Object.keys(xingtuData.audience_portrait || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                    <template x-for="key in Object.keys(xingtuData.audience_portrait || {}).filter(k => xingtuShouldShow(k))" :key="key">
                       <div>
                         <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
                         <template x-if="typeof xingtuData.audience_portrait[key] !== 'object'">
@@ -540,10 +539,10 @@
               </div>
 
               <!-- 商单报价卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
                 <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => xingtuShouldShow(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.service_price[key] === 'number' || typeof xingtuData.service_price[key] === 'string'">
                         <div class="flex items-center justify-between py-2.5 px-4 bg-amber-50 rounded-lg">
@@ -565,7 +564,7 @@
                           </template>
                           <template x-if="!Array.isArray(xingtuData.service_price[key])">
                             <div class="space-y-1">
-                              <template x-for="subKey in Object.keys(xingtuData.service_price[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
+                              <template x-for="subKey in Object.keys(xingtuData.service_price[key]).filter(k => xingtuShouldShow(k)).slice(0, 10)" :key="subKey">
                                 <div class="flex items-center justify-between">
                                   <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
                                   <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.service_price[key][subKey]"></span>
@@ -581,10 +580,10 @@
               </div>
 
               <!-- 转化能力卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.conversion_ability && Object.keys(xingtuData.conversion_ability).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.conversion_ability && Object.keys(xingtuData.conversion_ability).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">转化能力</h4>
                 <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.conversion_ability || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.conversion_ability || {}).filter(k => xingtuShouldShow(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.conversion_ability[key] === 'number' || typeof xingtuData.conversion_ability[key] === 'string'">
                         <div class="flex items-center justify-between py-2 px-3 bg-rose-50 rounded-lg">
@@ -604,7 +603,7 @@
                           </template>
                           <template x-if="!Array.isArray(xingtuData.conversion_ability[key])">
                             <div class="space-y-1">
-                              <template x-for="subKey in Object.keys(xingtuData.conversion_ability[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
+                              <template x-for="subKey in Object.keys(xingtuData.conversion_ability[key]).filter(k => xingtuShouldShow(k)).slice(0, 10)" :key="subKey">
                                 <div class="flex items-center justify-between">
                                   <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
                                   <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.conversion_ability[key][subKey]"></span>
@@ -635,10 +634,10 @@
               </div>
 
               <!-- 数据概览卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">数据概览</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => xingtuShouldShow(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.data_overview[key] === 'number' || typeof xingtuData.data_overview[key] === 'string'">
                         <div class="text-center p-3 bg-gray-50 rounded-xl">
@@ -696,7 +695,7 @@
               </div>
 
               <!-- 视频表现卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).filter(k => xingtuShouldShow(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">视频表现</h4>
                 <!-- 数值指标网格 -->
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
@@ -1070,37 +1069,58 @@ function app() {
     },
 
     // 星图字段中文标签映射
+    // 无价值字段（全局过滤）
+    xingtuIgnore: new Set([
+      'base_resp', 'last_update_time', 'status_code', 'status_message', 'status_message_zh',
+      'kolId', 'kol_id', 'origin_type', 'type', 'image', 'distributions',
+      'distribution_list', 'type_display', 'description',
+      'finish_rate_ovr', 'hot_list_ranks', 'avatar_uri', 'core_user_id',
+      'platform_sync_info', 'geofencing', 'policy_version', 'card_entries',
+      'account_cert_info', 'show_favorite_list', 'type_label', 'mix_info',
+    ]),
+    xingtuShouldShow(key) { return !this.xingtuIgnore.has(key); },
     xingtuLabel(key) {
-      const labels = {
+      const L = {
+        // 星图指数
         'spread_score': '传播力', 'cooperation_score': '合作力', 'shop_score': '种草力',
-        'growth_score': '涨粉力', 'influence_score': '影响力', 'star_score': '性价比',
-        'cp_score': '传播指数', 'interact_score': '互动指数',
-        'gender': '性别', 'age': '年龄', 'city': '城市', 'province': '省份',
-        'interest': '兴趣', 'active_days': '活跃天数', 'fans_count': '粉丝数',
-        'date': '日期', 'day': '日期', 'total_fans_count': '总粉丝数',
-        'new_fans_count': '新增粉丝', 'lost_fans_count': '流失粉丝',
-        'avg_play_count': '平均播放', 'avg_digg_count': '平均点赞',
-        'avg_comment_count': '平均评论', 'avg_share_count': '平均转发',
-        'median_play_count': '中位播放', 'video_count': '视频数',
-        'name': '名称', 'value': '值', 'rate': '比例', 'percentage': '占比',
-        'kolId': 'KOL ID', 'kol_id': 'KOL ID',
-        'flowType': '流量类型', 'onlyAssign': '仅任务',
-        'price_info': '报价信息', 'quote_price': '报价', 'cpm': 'CPM',
-        'service_price': '服务报价', 'base_info': '基本信息',
-        'conversion_rate': '转化率', 'roi': 'ROI',
-        'fans_online_trend': '粉丝活跃时段',
-        'type_display': '类型', 'distribution_list': '分布',
-        'key': '名称', 'description': '描述',
-        'nick_name': '昵称', 'tags': '标签', 'verify_name': '认证',
-        'core_user_id': '核心用户ID', 'unique_id': '抖音号',
-        '1_20_video': '1-20视频', '21_60_video': '21-60视频',
-        'follower_count': '粉丝数', 'total_favorited': '总获赞',
+        'growth_score': '涨粉力', 'influence_score': '影响力', 'star_score': '综合性价比',
+        'cp_score': '传播指数', 'interact_score': '互动指数', 'show_score': '展示指数',
+        // 性价比
         'expect_cpe': '预估CPE', 'expect_cpm': '预估CPM', 'expect_vv': '预估播放量',
         'cpe_1_20': '1-20秒', 'cpe_21_60': '21-60秒', 'cpe_60': '60秒+',
         'cpm_1_20': '1-20秒', 'cpm_21_60': '21-60秒', 'cpm_60': '60秒+',
-        'hot_item': '热门视频', 'distributions': '分布数据',
+        'hot_item': '热门视频',
+        // 粉丝相关
+        'fans_count': '粉丝数', 'follower_count': '粉丝数', 'following_count': '关注数',
+        'total_fans_count': '总粉丝', 'new_fans_count': '新增粉丝', 'lost_fans_count': '流失粉丝',
+        'net_increase': '净增长', 'total_favorited': '总获赞', 'mplatform_followers_count': '全平台粉丝',
+        // 视频表现
+        'avg_play_count': '平均播放', 'avg_digg_count': '平均点赞', 'avg_comment_count': '平均评论',
+        'avg_share_count': '平均转发', 'avg_collect_count': '平均收藏', 'median_play_count': '中位播放',
+        'median_digg_count': '中位点赞', 'video_count': '视频数', 'aweme_count': '作品数',
+        'play_count': '播放量', 'digg_count': '点赞数', 'comment_count': '评论数',
+        'share_count': '转发数', 'collect_count': '收藏数', 'download_count': '下载数',
+        // 画像
+        'gender': '性别', 'age': '年龄', 'city': '城市', 'province': '省份',
+        'interest': '兴趣', 'active_days': '活跃天数', 'device': '设备',
+        // 商业
+        'price_info': '报价信息', 'quote_price': '报价', 'cpm': 'CPM', 'cpe': 'CPE',
+        'service_price': '服务报价', 'conversion_rate': '转化率', 'roi': 'ROI',
+        'fans_online_trend': '粉丝活跃时段', 'cooperation_count': '合作次数',
+        // 基本信息
+        'nick_name': '昵称', 'nickname': '昵称', 'tags': '标签', 'tag': '标签',
+        'verify_name': '认证', 'unique_id': '抖音号', 'signature': '简介',
+        'custom_verify': '认证信息', 'enterprise_verify_reason': '企业认证',
+        'short_id': '短ID', 'original_musician': '原创音乐人',
+        // 通用
+        'name': '名称', 'value': '数值', 'rate': '比例', 'percentage': '占比',
+        'date': '日期', 'day': '日期', 'time': '时间', 'count': '数量',
+        'title': '标题', 'desc': '描述', 'duration': '时长',
+        'key': '名称', 'label': '标签', 'score': '评分',
+        'favoriting_count': '喜欢数', 'follow_status': '关注状态',
+        'verification_type': '认证类型',
       };
-      return labels[key] || key.replace(/_/g, ' ');
+      return L[key] || key.replace(/_/g, ' ');
     },
 
     // 星图评论热词相关方法
