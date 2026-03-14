@@ -548,37 +548,14 @@
                 </div>
               </div>
 
-              <!-- 数据概览卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).filter(k => xingtuShouldShow(k)).length">
+              <!-- 数据概览卡片（只显示数字和字符串值，跳过嵌套对象） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).filter(k => xingtuShouldShow(k) && (typeof xingtuData.data_overview[k] === 'number' || typeof xingtuData.data_overview[k] === 'string')).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">数据概览</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => xingtuShouldShow(k))" :key="key">
-                    <div>
-                      <template x-if="typeof xingtuData.data_overview[key] === 'number' || typeof xingtuData.data_overview[key] === 'string'">
-                        <div class="text-center p-3 bg-gray-50 rounded-xl">
-                          <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="typeof xingtuData.data_overview[key] === 'number' ? fmtNum(xingtuData.data_overview[key]) : xingtuData.data_overview[key]"></p>
-                          <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
-                        </div>
-                      </template>
-                      <template x-if="typeof xingtuData.data_overview[key] === 'object' && xingtuData.data_overview[key] !== null">
-                        <div class="p-3 bg-gray-50 rounded-xl">
-                          <p class="text-xs text-gray-500 mb-1" x-text="xingtuLabel(key)"></p>
-                          <template x-if="Array.isArray(xingtuData.data_overview[key])">
-                            <div class="space-y-1">
-                              <template x-for="(item, idx) in xingtuData.data_overview[key].slice(0, 5)" :key="idx">
-                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? JSON.stringify(item) : item"></p>
-                              </template>
-                            </div>
-                          </template>
-                          <template x-if="!Array.isArray(xingtuData.data_overview[key])">
-                            <div class="space-y-1">
-                              <template x-for="subKey in Object.keys(xingtuData.data_overview[key]).slice(0, 5)" :key="subKey">
-                                <p class="text-xs text-gray-700"><span class="text-gray-400" x-text="xingtuLabel(subKey) + ': '"></span><span x-text="xingtuData.data_overview[key][subKey]"></span></p>
-                              </template>
-                            </div>
-                          </template>
-                        </div>
-                      </template>
+                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => xingtuShouldShow(k) && (typeof xingtuData.data_overview[k] === 'number' || typeof xingtuData.data_overview[k] === 'string'))" :key="key">
+                    <div class="text-center p-3 bg-gray-50 rounded-xl">
+                      <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="typeof xingtuData.data_overview[key] === 'number' ? fmtNum(xingtuData.data_overview[key]) : xingtuData.data_overview[key]"></p>
+                      <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
                     </div>
                   </template>
                 </div>
@@ -1035,7 +1012,7 @@ function app() {
         'verify_name': '认证', 'unique_id': '抖音号', 'signature': '简介',
         'custom_verify': '认证信息', 'enterprise_verify_reason': '企业认证',
         'short_id': '短ID', 'original_musician': '原创音乐人',
-        // 数据概览 / 传播价值（V2 get_author_spread_info）
+        // 数据概览 / 传播价值
         'total_play_cnt': '总播放量', 'total_digg_cnt': '总点赞量', 'total_comment_cnt': '总评论量',
         'total_share_cnt': '总转发量', 'total_collect_cnt': '总收藏量',
         'avg_play_cnt': '平均播放', 'avg_digg_cnt': '平均点赞', 'avg_comment_cnt': '平均评论',
@@ -1043,20 +1020,25 @@ function app() {
         'median_play_cnt': '中位播放', 'median_digg_cnt': '中位点赞',
         'play_mid': '中位播放', 'digg_mid': '中位点赞', 'comment_mid': '中位评论',
         'play_avg': '平均播放', 'digg_avg': '平均点赞', 'comment_avg': '平均评论',
+        'like_avg': '平均点赞', 'like_mid': '中位点赞',
         'share_avg': '平均转发', 'collect_avg': '平均收藏',
         'play_total': '总播放', 'digg_total': '总点赞',
-        'item_count': '视频数', 'aweme_count': '作品数',
-        'interaction_rate': '互动率', 'play_over_rate': '完播率',
+        'item_count': '视频数', 'item_num': '视频数', 'aweme_count': '作品数',
+        'item_rate': '视频互动比', 'item_total': '视频总数',
+        'interaction_rate': '互动率', 'interact_rate': '互动率',
+        'play_over_rate': '完播率', 'finish_rate': '完播率',
         'avg_interaction_rate': '平均互动率', 'completion_rate': '完播率',
-        'avg_completion_rate': '平均完播率', 'digg_rate': '点赞率',
-        'comment_rate': '评论率', 'share_rate': '转发率', 'collect_rate': '收藏率',
+        'avg_completion_rate': '平均完播率', 'avg_finish_rate': '平均完播率',
+        'digg_rate': '点赞率', 'comment_rate': '评论率',
+        'share_rate': '转发率', 'collect_rate': '收藏率',
         'play_cnt': '播放量', 'digg_cnt': '点赞数', 'comment_cnt': '评论数',
         'share_cnt': '转发数', 'collect_cnt': '收藏数',
+        'avg_duration': '平均时长(秒)', 'play_stability': '播放稳定性',
+        'sales_expect_cpm': '带货预估CPM',
         'spread_info': '传播数据', 'flow_type': '流量类型',
         'only_assign': '仅任务', 'range': '时间范围',
         'total_interaction': '总互动', 'avg_interaction': '平均互动',
-        'interaction_cnt': '互动数', 'finish_rate': '完播率',
-        'avg_finish_rate': '平均完播率', 'item_total': '视频总数',
+        'interaction_cnt': '互动数',
         // 通用
         'name': '名称', 'value': '数值', 'rate': '比例', 'percentage': '占比',
         'date': '日期', 'day': '日期', 'time': '时间', 'count': '数量',
