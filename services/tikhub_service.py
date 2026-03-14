@@ -627,6 +627,26 @@ async def fetch_kol_cp_info(kol_id: str) -> dict:
         return {}
 
 
+async def fetch_kol_convert_video_display(kol_id: str) -> list:
+    """获取 KOL 转化视频展示（商单视频列表）"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/xingtu/kol_convert_video_display_v1",
+                              params={"kolId": kol_id})
+        result = data.get("data", {})
+        if isinstance(result, dict) and "data" in result:
+            result = result.get("data", {})
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            for key in ("list", "videos", "items", "convert_videos"):
+                if isinstance(result.get(key), list):
+                    return result[key]
+        return []
+    except Exception as e:
+        logger.warning(f"获取转化视频展示失败: {e}")
+        return []
+
+
 async def fetch_kol_conversion_ability(kol_id: str, _range: str = "_1") -> dict:
     """获取 KOL 转化能力分析（_range: _1=7天, _2=30天, _3=90天）"""
     try:

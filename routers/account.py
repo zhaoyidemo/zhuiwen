@@ -116,17 +116,19 @@ async def get_account_xingtu(sec_user_id: str):
     if not kol_id:
         return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": ""})
 
-    # 第二步：并发调用精选星图 API（6次调用）
+    # 第二步：并发调用星图 API
     (
         fans_portrait,
         xingtu_index,
         service_price,
         cp_info,
+        convert_videos,
     ) = await asyncio.gather(
         tikhub_service.fetch_kol_fans_portrait(kol_id),
         tikhub_service.fetch_kol_xingtu_index(kol_id),
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
+        tikhub_service.fetch_kol_convert_video_display(kol_id),
     )
 
     return JSONResponse(content={
@@ -135,4 +137,5 @@ async def get_account_xingtu(sec_user_id: str):
         "xingtu_index": xingtu_index,
         "service_price": service_price,
         "cp_info": cp_info,
+        "convert_videos": convert_videos,
     })
