@@ -284,6 +284,24 @@ async def fetch_video_statistics(aweme_id: str) -> dict:
         return {}
 
 
+def _extract_list(data: dict, *keys) -> list:
+    """从 TikHub 嵌套响应中提取列表数据，支持多级 data 嵌套"""
+    result = data.get("data", {})
+    # TikHub 经常双层嵌套: {data: {data: [...], code: 0}}
+    if isinstance(result, dict):
+        for key in keys:
+            val = result.get(key)
+            if isinstance(val, list):
+                return val
+        # fallback: 尝试 result["data"]
+        inner = result.get("data")
+        if isinstance(inner, list):
+            return inner
+    if isinstance(result, list):
+        return result
+    return []
+
+
 async def fetch_video_trends(aweme_id: str, date_window: int = 7) -> list:
     """获取视频数据趋势（Billboard API）"""
     try:
@@ -292,8 +310,7 @@ async def fetch_video_trends(aweme_id: str, date_window: int = 7) -> list:
             "/api/v1/douyin/billboard/fetch_hot_item_trends_list",
             params={"aweme_id": aweme_id, "option": "all", "date_window": date_window},
         )
-        trends = data.get("data", {}).get("trend_list", []) or data.get("data", []) or []
-        return trends
+        return _extract_list(data, "trend_list", "trends")
     except Exception as e:
         logger.warning(f"获取视频趋势失败: {e}")
         return []
@@ -307,8 +324,7 @@ async def fetch_comment_word_cloud(aweme_id: str) -> list:
             "/api/v1/douyin/billboard/fetch_hot_comment_word_list",
             params={"aweme_id": aweme_id},
         )
-        words = data.get("data", {}).get("word_list", []) or data.get("data", []) or []
-        return words
+        return _extract_list(data, "word_list", "words")
     except Exception as e:
         logger.warning(f"获取评论词云失败: {e}")
         return []
@@ -325,10 +341,7 @@ async def fetch_video_danmaku(aweme_id: str, duration: int = 0) -> list:
             "/api/v1/douyin/web/fetch_one_video_danmaku",
             params=params,
         )
-        danmaku_list = data.get("data", []) or []
-        if isinstance(danmaku_list, dict):
-            danmaku_list = danmaku_list.get("danmaku_list", []) or danmaku_list.get("data", []) or []
-        return danmaku_list
+        return _extract_list(data, "danmaku_list", "danmaku")
     except Exception as e:
         logger.warning(f"获取弹幕数据失败: {e}")
         return []
