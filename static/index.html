@@ -346,15 +346,15 @@
                 <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
               </div>
 
-              <!-- 星图指数卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).filter(k => xingtuShouldShow(k)).length">
+              <!-- 星图指数卡片（只过滤系统字段，其余全显示） -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k) && (typeof xingtuData.xingtu_index[k] === 'number' || typeof xingtuData.xingtu_index[k] === 'string'))" :key="key">
+                  <template x-for="key in xingtuCleanKeys(xingtuData.xingtu_index).filter(k => typeof xingtuData.xingtu_index[k] === 'number' || typeof xingtuData.xingtu_index[k] === 'string')" :key="key">
                     <div class="text-center p-4 rounded-xl border"
-                      :class="xingtuData.xingtu_index[key] >= 80 ? 'bg-purple-50 border-purple-200' : xingtuData.xingtu_index[key] >= 60 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'">
+                      :class="typeof xingtuData.xingtu_index[key] === 'number' && xingtuData.xingtu_index[key] >= 80 ? 'bg-purple-50 border-purple-200' : typeof xingtuData.xingtu_index[key] === 'number' && xingtuData.xingtu_index[key] >= 60 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'">
                       <p class="text-2xl font-bold tabular-nums"
-                        :class="xingtuData.xingtu_index[key] >= 80 ? 'text-purple-600' : xingtuData.xingtu_index[key] >= 60 ? 'text-blue-600' : 'text-gray-600'"
+                        :class="typeof xingtuData.xingtu_index[key] === 'number' && xingtuData.xingtu_index[key] >= 80 ? 'text-purple-600' : typeof xingtuData.xingtu_index[key] === 'number' && xingtuData.xingtu_index[key] >= 60 ? 'text-blue-600' : 'text-gray-600'"
                         x-text="xingtuData.xingtu_index[key]"></p>
                       <p class="text-xs text-gray-500 mt-1.5 font-medium" x-text="xingtuLabel(key)"></p>
                     </div>
@@ -363,7 +363,7 @@
               </div>
 
               <!-- 性价比分析卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).filter(k => xingtuShouldShow(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
                 <!-- 预估播放量 -->
                 <div class="mb-4 flex items-center gap-2" x-show="xingtuData.cp_info.expect_vv">
@@ -399,6 +399,18 @@
                     </tbody>
                   </table>
                 </div>
+                <!-- 带货预估CPM -->
+                <div class="overflow-x-auto mb-4" x-show="xingtuData.cp_info.sales_expect_cpm">
+                  <h5 class="text-sm font-semibold text-gray-700 mb-2">带货预估CPM</h5>
+                  <div class="grid grid-cols-3 gap-2">
+                    <template x-for="k in Object.keys(xingtuData.cp_info.sales_expect_cpm || {})" :key="k">
+                      <div class="text-center p-2 bg-indigo-50 rounded-lg">
+                        <p class="text-sm font-bold text-indigo-600 tabular-nums" x-text="'¥' + fmtNum(xingtuData.cp_info.sales_expect_cpm[k])"></p>
+                        <p class="text-[10px] text-gray-500" x-text="xingtuLabel(k)"></p>
+                      </div>
+                    </template>
+                  </div>
+                </div>
                 <!-- 热门视频 -->
                 <div x-show="xingtuData.cp_info.hot_item && Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
                   <h5 class="text-sm font-semibold text-gray-700 mb-2">热门视频</h5>
@@ -412,16 +424,12 @@
                     </template>
                   </div>
                 </div>
-                <!-- 其他 cp_info 字段的兜底展示 -->
+                <!-- 其他数值字段 -->
                 <div class="space-y-2 mt-3">
-                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => xingtuShouldShow(k) && !['expect_cpe','expect_cpm','expect_vv','hot_item'].includes(k))" :key="key">
-                    <div>
-                      <template x-if="typeof xingtuData.cp_info[key] === 'number' || typeof xingtuData.cp_info[key] === 'string'">
-                        <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
-                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
-                          <span class="text-sm font-semibold text-indigo-700 tabular-nums" x-text="typeof xingtuData.cp_info[key] === 'number' ? fmtNum(xingtuData.cp_info[key]) : xingtuData.cp_info[key]"></span>
-                        </div>
-                      </template>
+                  <template x-for="key in xingtuCleanKeys(xingtuData.cp_info).filter(k => !['expect_cpe','expect_cpm','expect_vv','hot_item','sales_expect_cpm'].includes(k) && (typeof xingtuData.cp_info[k] === 'number' || typeof xingtuData.cp_info[k] === 'string'))" :key="key">
+                    <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
+                      <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                      <span class="text-sm font-semibold text-indigo-700 tabular-nums" x-text="typeof xingtuData.cp_info[key] === 'number' ? fmtNum(xingtuData.cp_info[key]) : xingtuData.cp_info[key]"></span>
                     </div>
                   </template>
                 </div>
@@ -481,13 +489,13 @@
                   </div>
                 </div>
 
-                <!-- 其他简单字段 -->
+                <!-- 其他字段（只过滤系统字段） -->
                 <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => bizWhitelist.has(k) && !['price_info','industry_tags','activity_info','nick_name'].includes(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
+                  <template x-for="key in xingtuCleanKeys(xingtuData.service_price).filter(k => !['price_info','industry_tags','activity_info','hot_list_ranks','avatar_uri','nick_name','short_id','lark_nick_name','author_avatar_frame_icon','contact_status','privacy_status','show_wechat','star_excellent_author'].includes(k) && xingtuData.service_price[k] !== null && xingtuData.service_price[k] !== '' && xingtuData.service_price[k] !== 0)" :key="key">
                     <div class="flex items-center justify-between py-2 px-4 bg-gray-50 rounded-lg">
                       <span class="text-sm text-gray-600" x-text="xingtuLabel(key)"></span>
                       <span class="text-sm font-semibold text-gray-800 tabular-nums"
-                        x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : (xingtuData.service_price[key] === true ? '是' : xingtuData.service_price[key] === false ? '否' : xingtuData.service_price[key])"></span>
+                        x-text="typeof xingtuData.service_price[key] === 'number' ? fmtNum(xingtuData.service_price[key]) : (xingtuData.service_price[key] === true ? '是' : xingtuData.service_price[key] === false ? '否' : String(xingtuData.service_price[key]))"></span>
                     </div>
                   </template>
                 </div>
@@ -867,6 +875,9 @@ function app() {
       'recommend_reason_relation', 'search_impr', 'user_permissions',
     ]),
     xingtuShouldShow(key) { return !this.xingtuIgnore.has(key); },
+    // 只过滤系统字段，保留所有业务字段
+    xingtuSysFields: new Set(['base_resp', 'status_code', 'status_message', 'status_message_zh', 'last_update_time']),
+    xingtuCleanKeys(obj) { return Object.keys(obj || {}).filter(k => !this.xingtuSysFields.has(k)); },
     // 基本信息白名单
     baseInfoWhitelist: new Set([
       'nick_name', 'nickname', 'unique_id', 'signature', 'tags', 'tag',
