@@ -124,7 +124,7 @@
 
                   <!-- 收藏率高亮 -->
                   <div class="rounded-xl border p-4 mb-4" :class="rateBgClass(videoData.collect_rate)">
-                    <p class="text-xs text-gray-500 mb-1">收藏率（北极星指标）</p>
+                    <p class="text-xs text-gray-500 mb-1" x-text="videoData.play_count > 0 ? '收藏率（北极星指标）' : '收藏率（基于点赞数估算，播放量不可用）'"></p>
                     <p class="text-3xl font-bold tabular-nums" :class="rateColorClass(videoData.collect_rate)" x-text="fmtRate(videoData.collect_rate)"></p>
                   </div>
 

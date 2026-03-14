@@ -52,6 +52,21 @@ def _is_share_url(url: str) -> bool:
     return "v.douyin.com" in url or "vm.douyin.com" in url
 
 
+def _parse_duration(item: dict, video: dict) -> int:
+    """解析视频时长（返回秒数）"""
+    # item.duration 通常是毫秒
+    d = item.get("duration", 0) or 0
+    if d > 10000:  # 超过 10000 说明是毫秒
+        return d // 1000
+    if d > 0:
+        return d
+    # fallback: video.duration
+    vd = video.get("duration", 0) or 0
+    if vd > 10000:
+        return vd // 1000
+    return vd
+
+
 def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
     """从 TikHub 返回的视频数据中解析出 VideoData"""
     statistics = item.get("statistics", {}) or {}
@@ -60,8 +75,11 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
     video = item.get("video", {}) or {}
 
     play_count = statistics.get("play_count", 0) or statistics.get("view_count", 0) or 0
+    digg_count = statistics.get("digg_count", 0) or 0
     collect_count = statistics.get("collect_count", 0) or 0
-    collect_rate = round(collect_count / play_count, 6) if play_count > 0 else 0.0
+    # 播放量为 0 时，用点赞数估算播放量来计算收藏率（抖音部分端点不返回播放量）
+    denominator = play_count if play_count > 0 else digg_count
+    collect_rate = round(collect_count / denominator, 6) if denominator > 0 else 0.0
 
     # 提取话题标签
     text_extra = item.get("text_extra", []) or []
@@ -100,9 +118,9 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
         account_id=str(author.get("uid", "")),
         desc=item.get("desc", ""),
         create_time=create_time_str,
-        duration=item.get("duration", 0) or (video.get("duration", 0) // 1000 if video.get("duration") else 0),
+        duration=_parse_duration(item, video),
         play_count=play_count,
-        digg_count=statistics.get("digg_count", 0) or 0,
+        digg_count=digg_count,
         comment_count=statistics.get("comment_count", 0) or 0,
         collect_count=collect_count,
         share_count=statistics.get("share_count", 0) or 0,
