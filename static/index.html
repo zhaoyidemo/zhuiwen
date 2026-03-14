@@ -348,7 +348,7 @@
               </div>
 
               <!-- KOL 基本信息卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">基本信息</h4>
                 <div class="space-y-3">
                   <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
@@ -375,15 +375,79 @@
               </div>
 
               <!-- 星图指数卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && Object.keys(xingtuData.xingtu_index).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
-                    <div class="text-center p-3 bg-purple-50 rounded-xl">
-                      <template x-if="typeof xingtuData.xingtu_index[key] === 'number' || typeof xingtuData.xingtu_index[key] === 'string'">
-                        <div>
-                          <p class="text-lg font-bold text-purple-700 tabular-nums" x-text="xingtuData.xingtu_index[key]"></p>
-                          <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
+                  <template x-for="key in Object.keys(xingtuData.xingtu_index || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k) && (typeof xingtuData.xingtu_index[k] === 'number' || typeof xingtuData.xingtu_index[k] === 'string'))" :key="key">
+                    <div class="text-center p-4 rounded-xl border"
+                      :class="xingtuData.xingtu_index[key] >= 80 ? 'bg-purple-50 border-purple-200' : xingtuData.xingtu_index[key] >= 60 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'">
+                      <p class="text-2xl font-bold tabular-nums"
+                        :class="xingtuData.xingtu_index[key] >= 80 ? 'text-purple-600' : xingtuData.xingtu_index[key] >= 60 ? 'text-blue-600' : 'text-gray-600'"
+                        x-text="xingtuData.xingtu_index[key]"></p>
+                      <p class="text-xs text-gray-500 mt-1.5 font-medium" x-text="xingtuLabel(key)"></p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- 性价比分析卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
+                <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
+                <!-- 预估播放量 -->
+                <div class="mb-4 flex items-center gap-2" x-show="xingtuData.cp_info.expect_vv">
+                  <span class="text-sm text-gray-500">预估播放量：</span>
+                  <span class="text-xl font-bold text-indigo-600 tabular-nums" x-text="fmtNum(xingtuData.cp_info.expect_vv)"></span>
+                </div>
+                <!-- CPE/CPM 定价表格 -->
+                <div class="overflow-x-auto mb-4" x-show="xingtuData.cp_info.expect_cpe || xingtuData.cp_info.expect_cpm">
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="bg-indigo-50">
+                        <th class="text-left py-3 px-4 text-xs font-semibold text-indigo-700 rounded-tl-lg">视频时长</th>
+                        <th class="text-right py-3 px-4 text-xs font-semibold text-indigo-700">CPE（互动成本）</th>
+                        <th class="text-right py-3 px-4 text-xs font-semibold text-indigo-700 rounded-tr-lg">CPM（千播成本）</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-3 px-4 text-gray-700 font-medium">1-20秒</td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_1_20)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_1_20)) : '-'"></td>
+                      </tr>
+                      <tr class="border-b border-gray-100">
+                        <td class="py-3 px-4 text-gray-700 font-medium">21-60秒</td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_21_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_21_60)) : '-'"></td>
+                      </tr>
+                      <tr>
+                        <td class="py-3 px-4 text-gray-700 font-medium">60秒+</td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_60)) : '-'"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- 热门视频 -->
+                <div x-show="Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
+                  <h5 class="text-sm font-semibold text-gray-700 mb-2">热门视频</h5>
+                  <div class="space-y-2">
+                    <template x-for="(item, idx) in (xingtuData.cp_info.hot_item || []).slice(0, 3)" :key="idx">
+                      <div class="flex items-center gap-3 py-2 px-3 bg-indigo-50/50 rounded-lg">
+                        <span class="text-xs text-indigo-400 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
+                        <span class="text-sm text-gray-700 truncate flex-1" x-text="item.title || item.desc || item.name || (typeof item === 'string' ? item : JSON.stringify(item))"></span>
+                        <span class="text-xs text-gray-400 tabular-nums shrink-0" x-show="item.play_count" x-text="fmtNum(item.play_count) + '播放'"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- 其他 cp_info 字段的兜底展示 -->
+                <div class="space-y-2 mt-3">
+                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message','expect_cpe','expect_cpm','expect_vv','hot_item'].includes(k))" :key="key">
+                    <div>
+                      <template x-if="typeof xingtuData.cp_info[key] === 'number' || typeof xingtuData.cp_info[key] === 'string'">
+                        <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
+                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
+                          <span class="text-sm font-semibold text-indigo-700 tabular-nums" x-text="typeof xingtuData.cp_info[key] === 'number' ? fmtNum(xingtuData.cp_info[key]) : xingtuData.cp_info[key]"></span>
                         </div>
                       </template>
                     </div>
@@ -391,28 +455,26 @@
                 </div>
               </div>
 
-              <!-- 粉丝画像卡片（distributions 条形图模式） -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && (xingtuData.fans_portrait.distributions || Object.keys(xingtuData.fans_portrait).length)">
+              <!-- 粉丝画像卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait && xingtuData.fans_portrait.distributions && xingtuData.fans_portrait.distributions.length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">粉丝画像</h4>
-                <!-- distributions 数组专用渲染 -->
                 <template x-if="Array.isArray(xingtuData.fans_portrait?.distributions)">
-                  <div class="space-y-6">
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <template x-for="(dist, dIdx) in xingtuData.fans_portrait.distributions" :key="dIdx">
-                      <div class="bg-blue-50/50 rounded-xl p-4">
-                        <h5 class="text-sm font-semibold text-gray-800 mb-1" x-text="dist.type_display || '分布'"></h5>
-                        <p class="text-xs text-gray-500 mb-3" x-show="dist.description" x-text="dist.description"></p>
-                        <div class="space-y-2">
-                          <template x-for="(item, iIdx) in (dist.distribution_list || [])" :key="iIdx">
-                            <div class="flex items-center gap-3">
-                              <span class="text-xs text-gray-600 w-16 shrink-0 text-right" x-text="item.key"></span>
-                              <div class="flex-1 bg-blue-100 rounded-full h-5 overflow-hidden">
+                      <div class="bg-blue-50/30 rounded-xl p-4 border border-blue-100">
+                        <h5 class="text-sm font-semibold text-gray-800 mb-0.5" x-text="dist.type_display || '分布'"></h5>
+                        <p class="text-xs text-blue-600 mb-3" x-show="dist.description" x-text="dist.description"></p>
+                        <div class="space-y-1.5">
+                          <template x-for="(item, iIdx) in (dist.distribution_list || []).slice(0, 10)" :key="iIdx">
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs text-gray-600 w-20 shrink-0 text-right truncate" x-text="item.key" :title="item.key"></span>
+                              <div class="flex-1 bg-blue-100/60 rounded-full h-5 overflow-hidden">
                                 <div class="h-full bg-blue-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                                  :style="'width:' + Math.max(item.value || 0, 2) + '%'">
-                                  <span class="text-[10px] text-white font-medium" x-show="item.value >= 10" x-text="item.value + '%'"></span>
+                                  :style="'width:' + Math.max(item.value || 0, 3) + '%'">
+                                  <span class="text-[10px] text-white font-medium whitespace-nowrap" x-show="item.value >= 12" x-text="item.value + '%'"></span>
                                 </div>
                               </div>
-                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums" x-show="item.value < 10" x-text="item.value + '%'"></span>
-                              <span class="w-10 shrink-0" x-show="item.value >= 10"></span>
+                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums text-right" x-text="item.value + '%'"></span>
                             </div>
                           </template>
                         </div>
@@ -435,28 +497,26 @@
                 </template>
               </div>
 
-              <!-- 观众画像卡片（distributions 条形图模式） -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && (xingtuData.audience_portrait.distributions || Object.keys(xingtuData.audience_portrait).length)">
+              <!-- 观众画像卡片 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.audience_portrait && xingtuData.audience_portrait.distributions && xingtuData.audience_portrait.distributions.length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">观众画像</h4>
-                <!-- distributions 数组专用渲染 -->
                 <template x-if="Array.isArray(xingtuData.audience_portrait?.distributions)">
-                  <div class="space-y-6">
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <template x-for="(dist, dIdx) in xingtuData.audience_portrait.distributions" :key="dIdx">
-                      <div class="bg-emerald-50/50 rounded-xl p-4">
-                        <h5 class="text-sm font-semibold text-gray-800 mb-1" x-text="dist.type_display || '分布'"></h5>
-                        <p class="text-xs text-gray-500 mb-3" x-show="dist.description" x-text="dist.description"></p>
-                        <div class="space-y-2">
-                          <template x-for="(item, iIdx) in (dist.distribution_list || [])" :key="iIdx">
-                            <div class="flex items-center gap-3">
-                              <span class="text-xs text-gray-600 w-16 shrink-0 text-right" x-text="item.key"></span>
-                              <div class="flex-1 bg-emerald-100 rounded-full h-5 overflow-hidden">
+                      <div class="bg-emerald-50/30 rounded-xl p-4 border border-emerald-100">
+                        <h5 class="text-sm font-semibold text-gray-800 mb-0.5" x-text="dist.type_display || '分布'"></h5>
+                        <p class="text-xs text-emerald-600 mb-3" x-show="dist.description" x-text="dist.description"></p>
+                        <div class="space-y-1.5">
+                          <template x-for="(item, iIdx) in (dist.distribution_list || []).slice(0, 10)" :key="iIdx">
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs text-gray-600 w-20 shrink-0 text-right truncate" x-text="item.key" :title="item.key"></span>
+                              <div class="flex-1 bg-emerald-100/60 rounded-full h-5 overflow-hidden">
                                 <div class="h-full bg-emerald-500 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                                  :style="'width:' + Math.max(item.value || 0, 2) + '%'">
-                                  <span class="text-[10px] text-white font-medium" x-show="item.value >= 10" x-text="item.value + '%'"></span>
+                                  :style="'width:' + Math.max(item.value || 0, 3) + '%'">
+                                  <span class="text-[10px] text-white font-medium whitespace-nowrap" x-show="item.value >= 12" x-text="item.value + '%'"></span>
                                 </div>
                               </div>
-                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums" x-show="item.value < 10" x-text="item.value + '%'"></span>
-                              <span class="w-10 shrink-0" x-show="item.value >= 10"></span>
+                              <span class="text-xs text-gray-500 w-10 shrink-0 tabular-nums text-right" x-text="item.value + '%'"></span>
                             </div>
                           </template>
                         </div>
@@ -480,7 +540,7 @@
               </div>
 
               <!-- 商单报价卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
                 <div class="space-y-2">
                   <template x-for="key in Object.keys(xingtuData.service_price || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
@@ -520,47 +580,8 @@
                 </div>
               </div>
 
-              <!-- 性价比分析卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && Object.keys(xingtuData.cp_info).length">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
-                <div class="space-y-2">
-                  <template x-for="key in Object.keys(xingtuData.cp_info || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
-                    <div>
-                      <template x-if="typeof xingtuData.cp_info[key] === 'number' || typeof xingtuData.cp_info[key] === 'string'">
-                        <div class="flex items-center justify-between py-2 px-3 bg-indigo-50 rounded-lg">
-                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
-                          <span class="text-sm font-semibold text-indigo-700 tabular-nums" x-text="typeof xingtuData.cp_info[key] === 'number' ? fmtNum(xingtuData.cp_info[key]) : xingtuData.cp_info[key]"></span>
-                        </div>
-                      </template>
-                      <template x-if="typeof xingtuData.cp_info[key] === 'object' && xingtuData.cp_info[key] !== null">
-                        <div class="py-2 px-3 bg-indigo-50 rounded-lg">
-                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
-                          <template x-if="Array.isArray(xingtuData.cp_info[key])">
-                            <div class="space-y-1">
-                              <template x-for="(item, idx) in xingtuData.cp_info[key].slice(0, 10)" :key="idx">
-                                <p class="text-xs text-gray-700" x-text="typeof item === 'object' ? Object.entries(item).map(([k,v]) => xingtuLabel(k) + ': ' + v).join(' | ') : item"></p>
-                              </template>
-                            </div>
-                          </template>
-                          <template x-if="!Array.isArray(xingtuData.cp_info[key])">
-                            <div class="space-y-1">
-                              <template x-for="subKey in Object.keys(xingtuData.cp_info[key]).filter(k => !['base_resp'].includes(k)).slice(0, 10)" :key="subKey">
-                                <div class="flex items-center justify-between">
-                                  <span class="text-xs text-gray-500" x-text="xingtuLabel(subKey)"></span>
-                                  <span class="text-xs font-semibold text-gray-700" x-text="xingtuData.cp_info[key][subKey]"></span>
-                                </div>
-                              </template>
-                            </div>
-                          </template>
-                        </div>
-                      </template>
-                    </div>
-                  </template>
-                </div>
-              </div>
-
               <!-- 转化能力卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.conversion_ability && Object.keys(xingtuData.conversion_ability).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.conversion_ability && Object.keys(xingtuData.conversion_ability).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">转化能力</h4>
                 <div class="space-y-2">
                   <template x-for="key in Object.keys(xingtuData.conversion_ability || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
@@ -614,10 +635,10 @@
               </div>
 
               <!-- 数据概览卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.data_overview && Object.keys(xingtuData.data_overview).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">数据概览</h4>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
+                  <template x-for="key in Object.keys(xingtuData.data_overview || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k))" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.data_overview[key] === 'number' || typeof xingtuData.data_overview[key] === 'string'">
                         <div class="text-center p-3 bg-gray-50 rounded-xl">
@@ -655,15 +676,15 @@
                 <div class="overflow-x-auto">
                   <table class="w-full text-sm">
                     <thead>
-                      <tr class="border-b border-gray-200">
+                      <tr class="border-b border-gray-200 bg-gray-50">
                         <template x-for="col in xingtuDailyFansCols()" :key="col">
-                          <th class="text-left py-2 px-3 text-xs text-gray-500 font-medium" x-text="xingtuLabel(col)"></th>
+                          <th class="text-left py-2.5 px-3 text-xs text-gray-500 font-semibold" x-text="xingtuLabel(col)"></th>
                         </template>
                       </tr>
                     </thead>
                     <tbody>
                       <template x-for="(row, idx) in xingtuDailyFansRows()" :key="idx">
-                        <tr class="border-b border-gray-100">
+                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                           <template x-for="col in xingtuDailyFansCols()" :key="col">
                             <td class="py-2 px-3 text-gray-700 tabular-nums" x-text="typeof row[col] === 'number' ? fmtNum(row[col]) : row[col]"></td>
                           </template>
@@ -675,30 +696,32 @@
               </div>
 
               <!-- 视频表现卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.video_performance && Object.keys(xingtuData.video_performance).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k)).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">视频表现</h4>
-                <div class="space-y-3">
-                  <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => !['base_resp','last_update_time'].includes(k))" :key="key">
-                    <div>
-                      <template x-if="typeof xingtuData.video_performance[key] === 'number' || typeof xingtuData.video_performance[key] === 'string'">
-                        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                          <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
-                          <span class="text-sm font-semibold text-gray-800 tabular-nums" x-text="typeof xingtuData.video_performance[key] === 'number' ? fmtNum(xingtuData.video_performance[key]) : xingtuData.video_performance[key]"></span>
-                        </div>
-                      </template>
-                      <template x-if="Array.isArray(xingtuData.video_performance[key])">
-                        <div>
-                          <p class="text-sm text-gray-500 mb-2" x-text="xingtuLabel(key)"></p>
-                          <div class="flex flex-wrap gap-2">
-                            <template x-for="(item, idx) in xingtuData.video_performance[key].slice(0, 10)" :key="idx">
-                              <span class="px-2 py-1 bg-gray-50 rounded text-xs text-gray-700" x-text="typeof item === 'object' ? JSON.stringify(item) : item"></span>
-                            </template>
-                          </div>
-                        </div>
-                      </template>
+                <!-- 数值指标网格 -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+                  <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => !['base_resp','last_update_time','status_code','status_message'].includes(k) && (typeof xingtuData.video_performance[k] === 'number' || typeof xingtuData.video_performance[k] === 'string'))" :key="key">
+                    <div class="text-center p-3 bg-gray-50 rounded-xl">
+                      <p class="text-lg font-bold text-gray-800 tabular-nums" x-text="typeof xingtuData.video_performance[key] === 'number' ? fmtNum(xingtuData.video_performance[key]) : xingtuData.video_performance[key]"></p>
+                      <p class="text-[10px] text-gray-500 mt-1" x-text="xingtuLabel(key)"></p>
                     </div>
                   </template>
                 </div>
+                <!-- 视频列表 -->
+                <template x-for="key in Object.keys(xingtuData.video_performance || {}).filter(k => Array.isArray(xingtuData.video_performance[k]) && xingtuData.video_performance[k].length > 0)" :key="key">
+                  <div>
+                    <p class="text-sm font-medium text-gray-600 mb-2" x-text="xingtuLabel(key)"></p>
+                    <div class="space-y-2">
+                      <template x-for="(item, idx) in xingtuData.video_performance[key].slice(0, 5)" :key="idx">
+                        <div class="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                          <span class="text-xs text-gray-400 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
+                          <span class="text-sm text-gray-700 truncate flex-1" x-text="item.title || item.desc || item.name || (typeof item === 'object' ? JSON.stringify(item) : item)"></span>
+                          <span class="text-xs text-gray-400 tabular-nums shrink-0" x-show="item.play_count" x-text="fmtNum(item.play_count) + '播放'"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
               </div>
             </div>
           </template>
@@ -1072,6 +1095,10 @@ function app() {
         'core_user_id': '核心用户ID', 'unique_id': '抖音号',
         '1_20_video': '1-20视频', '21_60_video': '21-60视频',
         'follower_count': '粉丝数', 'total_favorited': '总获赞',
+        'expect_cpe': '预估CPE', 'expect_cpm': '预估CPM', 'expect_vv': '预估播放量',
+        'cpe_1_20': '1-20秒', 'cpe_21_60': '21-60秒', 'cpe_60': '60秒+',
+        'cpm_1_20': '1-20秒', 'cpm_21_60': '21-60秒', 'cpm_60': '60秒+',
+        'hot_item': '热门视频', 'distributions': '分布数据',
       };
       return labels[key] || key.replace(/_/g, ' ');
     },
