@@ -175,45 +175,38 @@
           <template x-if="extendedData">
             <div class="mt-6 space-y-6">
 
-              <!-- 评论词云 -->
+              <!-- 评论热词 -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.word_cloud && extendedData.word_cloud.length">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">评论热词</h3>
                 <div class="flex flex-wrap gap-2">
-                  <template x-for="(w, i) in extendedData.word_cloud.slice(0, 40)" :key="i">
-                    <span class="px-3 py-1.5 rounded-full text-sm"
-                      :style="'font-size:' + Math.max(12, Math.min(28, 12 + (w.weight || w.value || 1) * 2)) + 'px'"
-                      :class="['bg-blue-50 text-blue-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-emerald-50 text-emerald-700', 'bg-rose-50 text-rose-700'][i % 5]"
-                      x-text="w.word || w.name || w.keyword || ''"></span>
+                  <template x-for="(w, i) in extendedData.word_cloud" :key="i">
+                    <span class="px-3 py-1.5 rounded-full cursor-default"
+                      :style="'font-size:' + Math.max(13, Math.min(28, 13 + w.weight * 3)) + 'px'"
+                      :class="['bg-blue-50 text-blue-700', 'bg-purple-50 text-purple-700', 'bg-amber-50 text-amber-700', 'bg-emerald-50 text-emerald-700', 'bg-rose-50 text-rose-700'][i % 5]">
+                      <span x-text="w.word"></span>
+                      <span class="text-[10px] opacity-60" x-text="'×' + w.weight"></span>
+                    </span>
                   </template>
                 </div>
               </div>
 
-              <!-- 数据趋势 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.trends && extendedData.trends.length">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">数据趋势</h3>
-                <div class="overflow-x-auto">
-                  <table class="w-full text-sm">
-                    <thead>
-                      <tr class="text-left text-gray-500 border-b">
-                        <th class="py-2 pr-4">日期</th>
-                        <th class="py-2 pr-4 text-right">播放</th>
-                        <th class="py-2 pr-4 text-right">点赞</th>
-                        <th class="py-2 pr-4 text-right">评论</th>
-                        <th class="py-2 text-right">收藏</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template x-for="(t, i) in extendedData.trends" :key="i">
-                        <tr class="border-b border-gray-50">
-                          <td class="py-2 pr-4 text-gray-600" x-text="t.date || t.time || '-'"></td>
-                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.play_count || t.play || 0)"></td>
-                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.digg_count || t.digg || 0)"></td>
-                          <td class="py-2 pr-4 text-right tabular-nums" x-text="fmtNum(t.comment_count || t.comment || 0)"></td>
-                          <td class="py-2 text-right tabular-nums" x-text="fmtNum(t.collect_count || t.collect || 0)"></td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
+              <!-- 热门评论 -->
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="extendedData.comments && extendedData.comments.length">
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">热门评论</h3>
+                <p class="text-xs text-gray-400 mb-4">共 <span x-text="extendedData.comments.length"></span> 条 · 按点赞排序</p>
+                <div class="max-h-80 overflow-y-auto space-y-3">
+                  <template x-for="(c, i) in extendedData.comments.slice().sort((a,b) => (b.digg_count||0) - (a.digg_count||0))" :key="c.comment_id || i">
+                    <div class="flex gap-3 text-sm">
+                      <div class="shrink-0 w-6 text-right text-gray-300 text-xs pt-0.5" x-text="i + 1"></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                          <span class="font-medium text-gray-700 text-xs" x-text="c.user_nickname || '匿名'"></span>
+                          <span class="text-[10px] text-gray-300" x-text="c.digg_count ? '❤ ' + c.digg_count : ''"></span>
+                        </div>
+                        <p class="text-gray-600 leading-relaxed" x-text="c.content"></p>
+                      </div>
+                    </div>
+                  </template>
                 </div>
               </div>
 
@@ -231,11 +224,10 @@
                 </div>
               </div>
 
-              <!-- 没有扩展数据时的提示 -->
-              <div x-show="(!extendedData.word_cloud || !extendedData.word_cloud.length) && (!extendedData.trends || !extendedData.trends.length) && (!extendedData.danmaku || !extendedData.danmaku.length)"
+              <!-- 没有数据 -->
+              <div x-show="(!extendedData.comments || !extendedData.comments.length) && (!extendedData.danmaku || !extendedData.danmaku.length)"
                 class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-center text-gray-400">
-                <p>该视频暂无扩展数据（趋势/词云/弹幕）</p>
-                <p class="text-xs mt-1">部分数据仅对热门视频可用</p>
+                <p>该视频暂无评论或弹幕数据</p>
               </div>
 
             </div>
@@ -419,7 +411,23 @@ function app() {
       if (!this.videoData?.aweme_id) return;
       this.extendedLoading = true;
       try {
-        this.extendedData = await this.api('GET', '/video/' + this.videoData.aweme_id + '/extended');
+        const dur = this.videoData.duration || 0;
+        const data = await this.api('GET', '/video/' + this.videoData.aweme_id + '/extended?duration=' + dur);
+        // 从评论中提取高频词
+        const comments = data.comments || [];
+        const wordMap = {};
+        comments.forEach(c => {
+          const text = (c.content || '').replace(/[@#\[\]【】]/g, '');
+          // 按中文2-6字词和英文单词拆分
+          const segs = text.match(/[\u4e00-\u9fff]{2,6}|[a-zA-Z]{3,}/g) || [];
+          segs.forEach(w => { wordMap[w] = (wordMap[w] || 0) + 1; });
+        });
+        const wordCloud = Object.entries(wordMap)
+          .filter(([w, c]) => c >= 2)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 30)
+          .map(([word, count]) => ({ word, weight: count }));
+        this.extendedData = { comments, word_cloud: wordCloud, danmaku: data.danmaku || [] };
       } catch (e) { this.videoError = '深度分析加载失败: ' + e.message; }
       this.extendedLoading = false;
     },

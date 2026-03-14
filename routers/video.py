@@ -30,28 +30,27 @@ async def parse_video(req: VideoParseRequest):
 
 
 @router.get("/{aweme_id}/extended")
-async def get_video_extended(aweme_id: str):
-    """获取视频扩展数据：数据趋势、评论词云、弹幕"""
-    result = {"trends": [], "word_cloud": [], "danmaku": []}
+async def get_video_extended(aweme_id: str, duration: int = 0):
+    """获取视频扩展数据：评论热词、弹幕"""
+    result = {"comments": [], "danmaku": []}
+
+    # 拉取评论（已验证可用的接口）
     try:
-        trends = await tikhub_service.fetch_video_trends(aweme_id)
-        if isinstance(trends, list):
-            result["trends"] = trends
+        comment_data = await tikhub_service.fetch_video_comments(aweme_id, cursor=0, count=50)
+        result["comments"] = comment_data.get("comments", [])
     except Exception as e:
-        logger.warning(f"趋势数据获取失败: {e}")
-    try:
-        word_cloud = await tikhub_service.fetch_comment_word_cloud(aweme_id)
-        if isinstance(word_cloud, list):
-            result["word_cloud"] = word_cloud
-    except Exception as e:
-        logger.warning(f"词云数据获取失败: {e}")
-    try:
-        danmaku = await tikhub_service.fetch_video_danmaku(aweme_id)
-        if isinstance(danmaku, list):
-            result["danmaku"] = danmaku
-    except Exception as e:
-        logger.warning(f"弹幕数据获取失败: {e}")
-    logger.info(f"Extended: trends={len(result['trends'])}, wc={len(result['word_cloud'])}, dm={len(result['danmaku'])}")
+        logger.warning(f"评论获取失败: {e}")
+
+    # 拉取弹幕（需要 duration 参数）
+    if duration > 0:
+        try:
+            danmaku = await tikhub_service.fetch_video_danmaku(aweme_id, duration=duration)
+            if isinstance(danmaku, list):
+                result["danmaku"] = danmaku
+        except Exception as e:
+            logger.warning(f"弹幕获取失败: {e}")
+
+    logger.info(f"Extended: comments={len(result['comments'])}, danmaku={len(result['danmaku'])}")
     return JSONResponse(content=result)
 
 
