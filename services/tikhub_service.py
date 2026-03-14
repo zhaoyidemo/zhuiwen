@@ -446,19 +446,13 @@ async def fetch_kol_audience_portrait(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_data_overview(kol_id: str, _type: str = '', _range: str = '',
-                                   flow_type: str = '', only_assign: str = '') -> dict:
+async def fetch_kol_data_overview(kol_id: str, _type: str = '1', _range: str = '7',
+                                   flow_type: str = '', only_assign: str = '0') -> dict:
     """获取 KOL 数据概览"""
     try:
-        params = {"kolId": kol_id}
-        if _type:
-            params["_type"] = _type
-        if _range:
-            params["_range"] = _range
+        params = {"kolId": kol_id, "_type": _type, "_range": _range, "onlyAssign": only_assign}
         if flow_type:
             params["flowType"] = flow_type
-        if only_assign:
-            params["onlyAssign"] = only_assign
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_data_overview_v1", params=params)
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
@@ -472,11 +466,12 @@ async def fetch_kol_data_overview(kol_id: str, _type: str = '', _range: str = ''
 async def fetch_kol_daily_fans(kol_id: str, start_date: str = '', end_date: str = '') -> dict:
     """获取 KOL 粉丝趋势"""
     try:
-        params = {"kolId": kol_id}
-        if start_date:
-            params["startDate"] = start_date
-        if end_date:
-            params["endDate"] = end_date
+        # 默认查最近30天
+        if not start_date or not end_date:
+            from datetime import datetime, timedelta
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        params = {"kolId": kol_id, "startDate": start_date, "endDate": end_date}
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_daily_fans_v1", params=params)
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
@@ -487,12 +482,10 @@ async def fetch_kol_daily_fans(kol_id: str, start_date: str = '', end_date: str 
         return {}
 
 
-async def fetch_kol_video_performance(kol_id: str, only_assign: str = '') -> dict:
+async def fetch_kol_video_performance(kol_id: str, only_assign: str = '0') -> dict:
     """获取 KOL 视频表现"""
     try:
-        params = {"kolId": kol_id}
-        if only_assign:
-            params["onlyAssign"] = only_assign
+        params = {"kolId": kol_id, "onlyAssign": only_assign}
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_video_performance_v1", params=params)
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
@@ -535,7 +528,7 @@ async def fetch_kol_base_info(kol_id: str) -> dict:
     """获取 KOL 基本信息（简介、标签、认证等）"""
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_base_info_v1",
-                              params={"kolId": kol_id})
+                              params={"kolId": kol_id, "platformChannel": "douyin"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
@@ -549,7 +542,7 @@ async def fetch_kol_service_price(kol_id: str) -> dict:
     """获取 KOL 商单报价"""
     try:
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_service_price_v1",
-                              params={"kolId": kol_id})
+                              params={"kolId": kol_id, "platformChannel": "douyin"})
         result = data.get("data", {})
         if isinstance(result, dict) and "data" in result:
             return result.get("data", {})
@@ -573,12 +566,10 @@ async def fetch_kol_cp_info(kol_id: str) -> dict:
         return {}
 
 
-async def fetch_kol_conversion_ability(kol_id: str, _range: str = '') -> dict:
+async def fetch_kol_conversion_ability(kol_id: str, _range: str = '7') -> dict:
     """获取 KOL 转化能力分析"""
     try:
-        params = {"kolId": kol_id}
-        if _range:
-            params["_range"] = _range
+        params = {"kolId": kol_id, "_range": _range}
         data = await _request("GET", "/api/v1/douyin/xingtu/kol_conversion_ability_analysis_v1",
                               params=params)
         result = data.get("data", {})
