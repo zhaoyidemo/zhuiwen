@@ -347,15 +347,15 @@
               </div>
 
               <!-- KOL 基本信息卡片 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).filter(k => xingtuShouldShow(k)).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.base_info && Object.keys(xingtuData.base_info).filter(k => baseInfoWhitelist.has(k) && xingtuData.base_info[k]).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">基本信息</h4>
-                <div class="space-y-3">
-                  <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => xingtuShouldShow(k))" :key="key">
+                <div class="space-y-2">
+                  <template x-for="key in Object.keys(xingtuData.base_info || {}).filter(k => baseInfoWhitelist.has(k) && xingtuData.base_info[k])" :key="key">
                     <div>
                       <template x-if="typeof xingtuData.base_info[key] === 'string' || typeof xingtuData.base_info[key] === 'number'">
                         <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                           <span class="text-sm text-gray-500" x-text="xingtuLabel(key)"></span>
-                          <span class="text-sm font-semibold text-gray-800" x-text="xingtuData.base_info[key]"></span>
+                          <span class="text-sm font-semibold text-gray-800" x-text="typeof xingtuData.base_info[key] === 'number' ? fmtNum(xingtuData.base_info[key]) : xingtuData.base_info[key]"></span>
                         </div>
                       </template>
                       <template x-if="Array.isArray(xingtuData.base_info[key]) && xingtuData.base_info[key].length > 0">
@@ -1077,8 +1077,42 @@ function app() {
       'finish_rate_ovr', 'hot_list_ranks', 'avatar_uri', 'core_user_id',
       'platform_sync_info', 'geofencing', 'policy_version', 'card_entries',
       'account_cert_info', 'show_favorite_list', 'type_label', 'mix_info',
+      'id', 'uid', 'sec_uid', 'short_id', 'avatar_thumb', 'avatar_medium', 'avatar_larger',
+      'avatar_300x300', 'avatar_168x168', 'cover_url', 'white_cover_url',
+      'follow_status', 'is_ad_fake', 'is_block', 'is_star', 'is_ban',
+      'verification_type', 'original_musician', 'room_id', 'live_status',
+      'enterprise_verify_reason', 'followers_detail', 'platform_channel',
+      'platform_source', 'o_author_id', 'author_id', 'recommend',
+      'need_sec_uid', 'need_linkage_info', 'linkage_info',
+      'secret', 'with_commerce_entry', 'with_shop_entry', 'with_fusion_shop_entry',
+      'commerce_user_level', 'commerce_info', 'user_mode', 'user_period',
+      'has_activity_medal', 'can_set_geofencing', 'white_cover_url',
+      'prevent_download', 'video_icon', 'ins_id', 'google_account',
+      'youtube_channel_id', 'youtube_channel_title', 'apple_account',
+      'twitter_id', 'twitter_name', 'accept_private_policy', 'share_info',
+      'user_not_see', 'user_not_show', 'need_points', 'homepage_bottom_toast',
+      'is_mix_user', 'mix_users', 'is_phone_binded', 'personal_tag_list',
+      'recommend_reason_relation', 'search_impr', 'user_permissions',
     ]),
     xingtuShouldShow(key) { return !this.xingtuIgnore.has(key); },
+    // 基本信息白名单
+    baseInfoWhitelist: new Set([
+      'nick_name', 'nickname', 'unique_id', 'signature', 'tags', 'tag',
+      'custom_verify', 'verify_name', 'follower_count', 'mplatform_followers_count',
+      'following_count', 'aweme_count', 'total_favorited', 'favoriting_count',
+      'fans_count', 'video_count',
+    ]),
+    // 数据概览/视频表现中有用的字段
+    metricsWhitelist: new Set([
+      'avg_play_count', 'avg_digg_count', 'avg_comment_count', 'avg_share_count',
+      'avg_collect_count', 'median_play_count', 'median_digg_count',
+      'video_count', 'aweme_count', 'total_play', 'total_digg',
+      'play_count', 'digg_count', 'comment_count', 'share_count', 'collect_count',
+      'follower_count', 'fans_count', 'interaction_rate', 'play_over_rate',
+      'avg_interaction_rate', 'completion_rate', 'avg_completion_rate',
+      'spread_score', 'cooperation_score', 'shop_score', 'growth_score',
+      'influence_score', 'star_score', 'cp_score', 'interact_score',
+    ]),
     xingtuLabel(key) {
       const L = {
         // 星图指数
