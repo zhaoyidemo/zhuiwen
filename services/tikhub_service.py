@@ -246,11 +246,19 @@ async def fetch_user_videos(sec_user_id: str, max_cursor: int = 0, count: int = 
     )
 
     result_data = data.get("data", {})
-    aweme_list = result_data.get("aweme_list", []) or []
-    has_more = result_data.get("has_more", False)
-    next_cursor = result_data.get("max_cursor", 0)
+    if isinstance(result_data, dict):
+        aweme_list = result_data.get("aweme_list", []) or []
+    else:
+        aweme_list = []
+    has_more = result_data.get("has_more", False) if isinstance(result_data, dict) else False
+    next_cursor = result_data.get("max_cursor", 0) if isinstance(result_data, dict) else 0
 
-    videos = [_parse_video_data(item) for item in aweme_list]
+    # 日志：看第一个视频的 statistics 字段
+    if aweme_list and isinstance(aweme_list[0], dict):
+        first_stats = aweme_list[0].get("statistics", {})
+        logger.info(f"第一个视频 statistics: {first_stats}")
+
+    videos = [_parse_video_data(item) for item in aweme_list if isinstance(item, dict)]
 
     return {
         "videos": videos,
