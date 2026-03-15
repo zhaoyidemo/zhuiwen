@@ -781,6 +781,7 @@
                   <div class="flex items-center gap-2">
                     <span x-show="p.is_default" class="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-500 rounded">默认</span>
                     <button @click="p._editing = !p._editing" class="text-xs text-blue-500 hover:text-blue-600" x-text="p._editing ? '收起' : '编辑'"></button>
+                    <button @click="deleteAiPrompt(p.name)" class="text-xs text-red-400 hover:text-red-600">删除</button>
                   </div>
                 </div>
                 <!-- 预览 -->
@@ -1093,6 +1094,12 @@ function app() {
       try {
         const res = await this.api('GET', '/favorite/prompts');
         this.aiPrompts = res.prompts || [];
+      } catch (e) { /* ignore */ }
+    },
+    async deleteAiPrompt(name) {
+      try {
+        await this.api('DELETE', '/favorite/prompts/' + encodeURIComponent(name));
+        this.aiPrompts = this.aiPrompts.filter(p => p.name !== name);
       } catch (e) { /* ignore */ }
     },
     async saveAiPrompt(name, content) {
