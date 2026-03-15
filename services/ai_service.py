@@ -101,24 +101,22 @@ async def analyze_single_video(
     video_text = _format_video_for_prompt(video)
     comments_text = _format_comments_for_prompt(comments or [])
 
-    user_content = []
-
-    # 封面图（Claude Vision）
+    # 判断封面图是否可用（Claude Vision 支持 jpeg/png/gif/webp）
     cover_url = video.get("cover_url", "")
+    use_cover = False
     if include_cover and cover_url:
-        user_content.append({
-            "type": "image",
-            "source": {"type": "url", "url": cover_url},
-        })
-        user_content.append({
-            "type": "text",
-            "text": f"以上是视频封面图。\n\n{video_text}{comments_text}\n\n请根据以上数据和封面进行分析。",
-        })
-    else:
-        user_content.append({
-            "type": "text",
-            "text": f"{video_text}{comments_text}\n\n请根据以上数据进行分析。",
-        })
+        lower = cover_url.lower().split("?")[0]
+        if any(lower.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp")):
+            use_cover = True
+
+    def _build_content(with_image: bool) -> list:
+        content = []
+        if with_image and cover_url:
+            content.append({"type": "image", "source": {"type": "url", "url": cover_url}})
+            content.append({"type": "text", "text": f"以上是视频封面图。\n\n{video_text}{comments_text}\n\n请根据以上数据和封面进行分析。"})
+        else:
+            content.append({"type": "text", "text": f"{video_text}{comments_text}\n\n请根据以上数据进行分析。"})
+        return content
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -127,12 +125,27 @@ async def analyze_single_video(
             model="claude-opus-4-20250514",
             max_tokens=4096,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
+            messages=[{"role": "user", "content": _build_content(use_cover)}],
         )
         result_text = message.content[0].text
     except Exception as e:
-        logger.error(f"Claude API 调用失败: {e}")
-        result_text = f"分析失败：{str(e)}"
+        # 如果带图失败，不带图重试
+        if use_cover:
+            logger.warning(f"带封面分析失败，不带图重试: {e}")
+            try:
+                message = client.messages.create(
+                    model="claude-opus-4-20250514",
+                    max_tokens=4096,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": _build_content(False)}],
+                )
+                result_text = message.content[0].text
+            except Exception as e2:
+                logger.error(f"Claude API 调用失败: {e2}")
+                result_text = f"分析失败：{str(e2)}"
+        else:
+            logger.error(f"Claude API 调用失败: {e}")
+            result_text = f"分析失败：{str(e)}"
 
     return {
         "result": result_text,

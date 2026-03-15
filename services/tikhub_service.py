@@ -686,7 +686,7 @@ async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) 
         logger.info("Web 评论接口失败，尝试 App V3")
         data = await _request(
             "GET",
-            "/api/v1/douyin/app/v3/fetch_post_comment",
+            "/api/v1/douyin/app/v3/fetch_post_comments",
             params={"aweme_id": aweme_id, "cursor": cursor, "count": count},
         )
     result_data = data.get("data", {})
