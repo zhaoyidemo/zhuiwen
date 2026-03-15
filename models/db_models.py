@@ -77,12 +77,24 @@ class VideoFavorite(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     aweme_id: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    ai_analysis: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 
     __table_args__ = (
         Index("ix_video_favorites_aweme_id", "aweme_id", unique=True),
     )
+
+
+class AiPrompt(Base):
+    __tablename__ = "ai_prompts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 
 
 class VideoHistory(Base):

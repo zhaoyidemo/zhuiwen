@@ -1,5 +1,4 @@
 import logging
-import uuid
 from datetime import datetime
 
 import anthropic
@@ -8,102 +7,135 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-
-def _format_videos_for_prompt(videos: list[dict]) -> str:
-    """将视频数据格式化为 prompt 文本"""
-    lines = []
-    for i, v in enumerate(videos, 1):
-        lines.append(f"### 视频 {i}")
-        lines.append(f"- 描述：{v.get('desc', 'N/A')}")
-        lines.append(f"- 发布时间：{v.get('create_time', 'N/A')}")
-        lines.append(f"- 播放量：{v.get('play_count', 0):,}")
-        lines.append(f"- 点赞数：{v.get('digg_count', 0):,}")
-        lines.append(f"- 评论数：{v.get('comment_count', 0):,}")
-        lines.append(f"- 收藏数：{v.get('collect_count', 0):,}")
-        lines.append(f"- 转发数：{v.get('share_count', 0):,}")
-        collect_rate = v.get('collect_rate', 0)
-        if isinstance(collect_rate, (int, float)):
-            lines.append(f"- 收藏率：{collect_rate:.2f}%")
-        lines.append(f"- 标签：{v.get('tags', 'N/A')}")
-        lines.append(f"- 时长：{v.get('duration', 0)}秒")
-        lines.append(f"- 是否共创：{'是' if v.get('is_co_creation') else '否'}")
-        lines.append("")
-    return "\n".join(lines)
-
-
-ANALYSIS_PROMPTS = {
-    "爆款分析": """你是一位资深的抖音内容分析师。请分析以下视频数据，找出爆款规律。
+DEFAULT_PROMPTS = {
+    "爆款分析": """你是一位资深的抖音内容分析师。请对这条视频进行深度爆款分析。
 
 重点关注：
-1. 收藏率异常高的视频有什么共同特征（标题关键词、时长、发布时间等）
-2. 爆款视频的标题/描述模式
-3. 高互动视频的话题标签使用策略
-4. 发布时间与数据表现的关系
-5. 可借鉴的内容方向建议
+1. 选题策略：为什么这个选题能吸引用户？目标受众是谁？
+2. 标题/描述拆解：用了哪些钩子、关键词、情绪触发点？
+3. 数据表现解读：收藏率和互动率说明了什么？哪个指标特别突出？
+4. 评论区洞察：用户最关注什么？有哪些高频话题？情绪倾向如何？
+5. 可复用的方法论：这条视频有哪些可以借鉴的具体技巧？
 
-请用结构化的方式输出分析结论，每个发现都要有数据支撑。""",
+请用结构化的方式输出，每个发现都要有数据或评论支撑。""",
 
-    "竞品对比": """你是一位资深的抖音竞品分析师。请对比分析以下竞品账号的视频数据。
+    "选题分析": """你是一位资深的内容策划专家。请分析这条视频的选题策略。
 
 重点关注：
-1. 各账号的内容定位差异
-2. 发布频率和时间策略对比
-3. 平均收藏率、爆款率对比
-4. 共创使用率对比
-5. 各自的优势内容方向
-6. 值得借鉴的策略
+1. 选题定位：属于什么内容类型？切入角度是什么？
+2. 目标受众：面向什么人群？他们的痛点/需求是什么？
+3. 情绪价值：视频提供了什么情绪价值（共鸣、好奇、焦虑、治愈等）？
+4. 差异化：相比同类内容，这个选题有什么独特之处？
+5. 选题可复制性：如何基于这个选题延伸出系列内容？
 
-请用表格+文字的方式输出对比结论。""",
+请给出具体可执行的建议。""",
 
-    "文案改写": """你是一位擅长跨平台内容适配的文案专家。请基于以下抖音视频描述，改写为适合其他平台的版本。
+    "封面分析": """你是一位视觉内容专家。请分析这条视频的封面图。
 
-请分别生成：
-1. 小红书版本（加emoji、分段、强调体验感）
-2. B站版本（加入B站特色语言风格）
-3. 微信视频号版本（更正式、适合微信生态传播）
+重点关注：
+1. 视觉构图：画面布局、色彩运用、主体突出度
+2. 文字信息：封面上的文字是否清晰、是否有吸引力
+3. 情绪表达：封面传达了什么情绪？是否能引发点击欲望？
+4. 与内容匹配度：封面是否准确反映了视频内容？
+5. 改进建议：如何优化封面提升点击率？
 
-每个版本都要保留原始内容的核心价值点。""",
+请结合封面图片进行具体分析。""",
 }
 
 
-async def analyze_videos(
-    videos: list[dict],
-    analysis_type: str = "爆款分析",
-    custom_prompt: str = None,
+def _format_video_for_prompt(video: dict) -> str:
+    """将单条视频数据格式化为 prompt 文本"""
+    lines = [
+        f"## 视频信息",
+        f"- 描述：{video.get('desc', 'N/A')}",
+        f"- 发布时间：{video.get('create_time', 'N/A')}",
+        f"- 时长：{video.get('duration', 0)}秒",
+        f"- 作者：{video.get('author_nickname', 'N/A')} (@{video.get('author_unique_id', '')})",
+        f"- 话题标签：{video.get('tags', 'N/A')}",
+        f"- 内容分类：{video.get('video_tags', 'N/A')}",
+        f"",
+        f"## 数据表现",
+        f"- 播放量：{video.get('play_count', 0):,}",
+        f"- 点赞数：{video.get('digg_count', 0):,}",
+        f"- 评论数：{video.get('comment_count', 0):,}",
+        f"- 收藏数：{video.get('collect_count', 0):,}",
+        f"- 转发数：{video.get('share_count', 0):,}",
+    ]
+
+    collect_rate = video.get('collect_rate', 0)
+    engagement_rate = video.get('engagement_rate', 0)
+    if isinstance(collect_rate, (int, float)) and collect_rate > 0:
+        lines.append(f"- 收藏率：{collect_rate * 100:.2f}%")
+    if isinstance(engagement_rate, (int, float)) and engagement_rate > 0:
+        lines.append(f"- 互动率：{engagement_rate * 100:.2f}%")
+
+    return "\n".join(lines)
+
+
+def _format_comments_for_prompt(comments: list) -> str:
+    """将评论数据格式化为 prompt 文本"""
+    if not comments:
+        return ""
+    lines = ["\n## 评论区内容（按点赞排序）"]
+    sorted_comments = sorted(comments, key=lambda c: c.get("digg_count", 0), reverse=True)
+    for i, c in enumerate(sorted_comments[:30], 1):
+        digg = c.get("digg_count", 0)
+        reply = c.get("reply_count", 0)
+        content = c.get("content", "")
+        nickname = c.get("user_nickname", "匿名")
+        lines.append(f"{i}. [{nickname}] (❤{digg}, 回复{reply}) {content}")
+    return "\n".join(lines)
+
+
+async def analyze_single_video(
+    video: dict,
+    comments: list = None,
+    prompt: str = None,
+    include_cover: bool = True,
 ) -> dict:
-    """调用 Anthropic API 分析视频数据"""
+    """用 Claude Opus 分析单条视频"""
     if not settings.ANTHROPIC_API_KEY:
-        return {
-            "analysis_id": str(uuid.uuid4()),
-            "analysis_type": analysis_type,
-            "input_description": f"分析了 {len(videos)} 条视频",
-            "result": "错误：ANTHROPIC_API_KEY 未配置",
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
 
-    videos_text = _format_videos_for_prompt(videos)
-    system_prompt = custom_prompt or ANALYSIS_PROMPTS.get(analysis_type, ANALYSIS_PROMPTS["爆款分析"])
+    system_prompt = prompt or DEFAULT_PROMPTS["爆款分析"]
+    video_text = _format_video_for_prompt(video)
+    comments_text = _format_comments_for_prompt(comments or [])
 
-    user_message = f"以下是需要分析的视频数据：\n\n{videos_text}"
+    user_content = []
+
+    # 封面图（Claude Vision）
+    cover_url = video.get("cover_url", "")
+    if include_cover and cover_url:
+        user_content.append({
+            "type": "image",
+            "source": {"type": "url", "url": cover_url},
+        })
+        user_content.append({
+            "type": "text",
+            "text": f"以上是视频封面图。\n\n{video_text}{comments_text}\n\n请根据以上数据和封面进行分析。",
+        })
+    else:
+        user_content.append({
+            "type": "text",
+            "text": f"{video_text}{comments_text}\n\n请根据以上数据进行分析。",
+        })
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-20250514",
             max_tokens=4096,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
+            messages=[{"role": "user", "content": user_content}],
         )
         result_text = message.content[0].text
     except Exception as e:
-        logger.error(f"Anthropic API 调用失败: {e}")
+        logger.error(f"Claude API 调用失败: {e}")
         result_text = f"分析失败：{str(e)}"
 
     return {
-        "analysis_id": str(uuid.uuid4()),
-        "analysis_type": analysis_type,
-        "input_description": f"分析了 {len(videos)} 条视频",
         "result": result_text,
+        "prompt_used": system_prompt,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }

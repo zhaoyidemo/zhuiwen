@@ -1,7 +1,7 @@
 from sqlalchemy import select, delete, update, func, case
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.db_models import Account, Video, VideoHistory, VideoFavorite
+from models.db_models import Account, Video, VideoHistory, VideoFavorite, AiPrompt
 
 ALLOWED_SORT_FIELDS = {
     "collect_rate", "engagement_rate", "create_time", "play_count",
@@ -141,6 +141,7 @@ async def get_favorites(db: AsyncSession) -> list[dict]:
         select(VideoFavorite).order_by(VideoFavorite.created_at.desc())
     )
     return [{"id": f.id, "aweme_id": f.aweme_id, "data": f.data,
+             "ai_analysis": f.ai_analysis or {},
              "created_at": str(f.created_at) if f.created_at else ""}
             for f in result.scalars().all()]
 
@@ -170,6 +171,34 @@ async def get_video_history(db: AsyncSession, limit: int = 50) -> list[dict]:
 
 async def clear_video_history(db: AsyncSession) -> None:
     await db.execute(delete(VideoHistory))
+    await db.commit()
+
+
+# ---- AI 提示词 ----
+
+async def get_ai_prompts(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(AiPrompt).order_by(AiPrompt.id))
+    return [{"id": p.id, "name": p.name, "content": p.content, "is_default": p.is_default}
+            for p in result.scalars().all()]
+
+
+async def upsert_ai_prompt(db: AsyncSession, name: str, content: str) -> dict:
+    stmt = insert(AiPrompt).values(name=name, content=content)
+    stmt = stmt.on_conflict_do_update(index_elements=["name"], set_={"content": content})
+    await db.execute(stmt)
+    await db.commit()
+    return {"ok": True, "name": name}
+
+
+async def delete_ai_prompt(db: AsyncSession, name: str) -> None:
+    await db.execute(delete(AiPrompt).where(AiPrompt.name == name))
+    await db.commit()
+
+
+async def save_ai_analysis(db: AsyncSession, aweme_id: str, analysis: dict) -> None:
+    await db.execute(
+        update(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id).values(ai_analysis=analysis)
+    )
     await db.commit()
 
 

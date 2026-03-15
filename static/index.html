@@ -707,6 +707,57 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         取消收藏
                       </button>
+                      <button @click="v._showAi = !v._showAi; if (!aiPrompts.length) loadAiPrompts()"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg text-sm hover:from-violet-700 hover:to-purple-700 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        AI 洞察
+                      </button>
+                    </div>
+
+                    <!-- AI 洞察面板 -->
+                    <div x-show="v._showAi" class="mt-4 pt-4 border-t border-gray-100">
+                      <!-- 提示词选择和编辑 -->
+                      <div class="mb-3">
+                        <div class="flex items-center gap-2 mb-2">
+                          <select @change="v._aiPrompt = aiPrompts.find(p => p.name === $event.target.value)?.content || ''"
+                            class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white">
+                            <option value="">选择提示词模板</option>
+                            <template x-for="p in aiPrompts" :key="p.name">
+                              <option :value="p.name" x-text="p.name"></option>
+                            </template>
+                          </select>
+                          <button @click="v._editPrompt = !v._editPrompt"
+                            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+                            x-text="v._editPrompt ? '收起' : '编辑'"></button>
+                        </div>
+                        <div x-show="v._editPrompt">
+                          <textarea x-model="v._aiPrompt" rows="6"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y"
+                            placeholder="输入或编辑提示词..."></textarea>
+                          <div class="flex items-center gap-2 mt-2">
+                            <input x-model="v._promptName" type="text" placeholder="模板名称（保存用）"
+                              class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                            <button @click="saveAiPrompt(v._promptName, v._aiPrompt)"
+                              class="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">保存模板</button>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- 执行分析 -->
+                      <button @click="runAiAnalysis(v, idx)" :disabled="v._aiLoading"
+                        class="w-full py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-violet-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 transition-all flex items-center justify-center gap-2">
+                        <svg x-show="v._aiLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <span x-text="v._aiLoading ? 'Claude Opus 分析中...' : '开始 AI 分析'"></span>
+                      </button>
+                    </div>
+
+                    <!-- AI 分析结果 -->
+                    <div x-show="v._aiResult || v.ai_analysis?.result" class="mt-4 pt-4 border-t border-purple-100">
+                      <div class="flex items-center justify-between mb-3">
+                        <h5 class="text-sm font-semibold text-purple-700">AI 洞察</h5>
+                        <span class="text-[10px] text-gray-400" x-text="v._aiResult?.created_at || v.ai_analysis?.created_at || ''"></span>
+                      </div>
+                      <div class="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed"
+                        x-html="renderMarkdown(v._aiResult?.result || v.ai_analysis?.result || '')"></div>
                     </div>
 
                     <!-- 评论（评论热词） -->
@@ -789,6 +840,7 @@ function app() {
     // 爆款收藏
     favoriteVideos: [],
     favoriteRefreshing: null,
+    aiPrompts: [],
 
     // API 请求
     async api(method, path, body = null) {
@@ -823,7 +875,7 @@ function app() {
         ]);
         this.accounts = accRes.accounts || [];
         this.videoHistory = (histRes.history || []).map(h => h.data || h);
-        this.favoriteVideos = (favRes.favorites || []).map(f => ({ ...f.data, _fav_id: f.id, _fav_at: f.created_at }));
+        this.favoriteVideos = (favRes.favorites || []).map(f => ({ ...f.data, _fav_id: f.id, _fav_at: f.created_at, ai_analysis: f.ai_analysis || {} }));
       } catch (e) { /* 静默失败 */ }
     },
 
@@ -1022,6 +1074,50 @@ function app() {
         try { await this.api('POST', '/favorite/add', v); } catch (e) { /* ignore */ }
       }
     },
+    // AI 洞察
+    async loadAiPrompts() {
+      try {
+        const res = await this.api('GET', '/favorite/prompts');
+        this.aiPrompts = res.prompts || [];
+      } catch (e) { /* ignore */ }
+    },
+    async saveAiPrompt(name, content) {
+      if (!name || !content) return;
+      try {
+        await this.api('POST', '/favorite/prompts', { name, content });
+        await this.loadAiPrompts();
+      } catch (e) { /* ignore */ }
+    },
+    async runAiAnalysis(v, idx) {
+      if (v._aiLoading) return;
+      v._aiLoading = true;
+      try {
+        const res = await this.api('POST', '/favorite/' + v.aweme_id + '/analyze', {
+          prompt: v._aiPrompt || '',
+          video_data: v,
+        });
+        v._aiResult = res;
+        v.ai_analysis = res;
+      } catch (e) {
+        v._aiResult = { result: '分析失败: ' + e.message, created_at: '' };
+      }
+      v._aiLoading = false;
+    },
+    renderMarkdown(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-gray-800 mt-4 mb-2">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-gray-800 mt-5 mb-2">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-gray-800 mt-6 mb-3">$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+        .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>')
+        .replace(/\n{2,}/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    },
+
     async loadFavExtended(v, idx) {
       if (v._extended) { v._extended = null; return; }
       this.favoriteRefreshing = v.aweme_id;

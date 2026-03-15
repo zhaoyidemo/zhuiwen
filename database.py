@@ -53,12 +53,14 @@ async def init_db():
     async with async_engine.begin() as conn:
         await conn.run_sync(_Base.metadata.create_all)
         # 自动添加缺失的列（create_all 不会修改已有表）
-        for col_name, col_def in [
-            ("video_tags", "TEXT DEFAULT ''"),
-        ]:
+        migrations = [
+            ("videos", "video_tags", "TEXT DEFAULT ''"),
+            ("video_favorites", "ai_analysis", "JSONB DEFAULT '{}'::jsonb"),
+        ]
+        for table, col_name, col_def in migrations:
             try:
                 await conn.execute(
-                    sqlalchemy.text(f"ALTER TABLE videos ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+                    sqlalchemy.text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
                 )
             except Exception:
                 pass

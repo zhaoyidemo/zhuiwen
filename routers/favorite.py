@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services import tikhub_service, db_service
+from services import tikhub_service, db_service, ai_service
 from database import get_db
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,6 @@ async def refresh_favorite(aweme_id: str, db: AsyncSession = Depends(get_db)):
     try:
         video = await tikhub_service.fetch_video_by_id(aweme_id)
         video_data = jsonable_encoder(video)
-        # 补充播放量
         if not video_data.get("play_count"):
             try:
                 stats = await tikhub_service.fetch_video_statistics(aweme_id)
@@ -73,3 +72,66 @@ async def refresh_favorite(aweme_id: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         logger.error(f"刷新收藏失败: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{aweme_id}/analyze")
+async def analyze_favorite(aweme_id: str, body: dict, db: AsyncSession = Depends(get_db)):
+    """AI 分析收藏的视频"""
+    prompt = body.get("prompt", "")
+    video_data = body.get("video_data", {})
+    if not video_data:
+        raise HTTPException(status_code=400, detail="缺少视频数据")
+
+    # 获取评论
+    comments = []
+    try:
+        comment_data = await tikhub_service.fetch_video_comments(aweme_id, cursor=0, count=50)
+        comments = comment_data.get("comments", [])
+    except Exception as e:
+        logger.warning(f"获取评论失败（不影响分析）: {e}")
+
+    # 调用 Claude Opus
+    try:
+        analysis = await ai_service.analyze_single_video(
+            video=video_data,
+            comments=comments,
+            prompt=prompt or None,
+        )
+        # 保存到收藏记录
+        await db_service.save_ai_analysis(db, aweme_id, analysis)
+        return analysis
+    except Exception as e:
+        logger.error(f"AI 分析失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---- 提示词管理 ----
+
+@router.get("/prompts")
+async def list_prompts(db: AsyncSession = Depends(get_db)):
+    """获取提示词列表（数据库 + 默认模板）"""
+    db_prompts = await db_service.get_ai_prompts(db)
+    db_names = {p["name"] for p in db_prompts}
+    # 补充默认模板（未被用户覆盖的）
+    for name, content in ai_service.DEFAULT_PROMPTS.items():
+        if name not in db_names:
+            db_prompts.append({"id": None, "name": name, "content": content, "is_default": True})
+    return {"prompts": db_prompts}
+
+
+@router.post("/prompts")
+async def save_prompt(body: dict, db: AsyncSession = Depends(get_db)):
+    """保存/更新提示词"""
+    name = body.get("name", "").strip()
+    content = body.get("content", "").strip()
+    if not name or not content:
+        raise HTTPException(status_code=400, detail="名称和内容不能为空")
+    result = await db_service.upsert_ai_prompt(db, name, content)
+    return result
+
+
+@router.delete("/prompts/{name}")
+async def delete_prompt(name: str, db: AsyncSession = Depends(get_db)):
+    """删除提示词"""
+    await db_service.delete_ai_prompt(db, name)
+    return {"ok": True}
