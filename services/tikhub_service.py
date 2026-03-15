@@ -374,7 +374,7 @@ async def fetch_video_trends(aweme_id: str, date_window: int = 7) -> list:
         data = await _request(
             "GET",
             "/api/v1/douyin/billboard/fetch_hot_item_trends_list",
-            params={"aweme_id": aweme_id, "option": "all", "date_window": date_window},
+            params={"aweme_id": aweme_id, "option": 0, "date_window": date_window},
         )
         return _extract_list(data, "trend_list", "trends")
     except Exception as e:

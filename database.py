@@ -1,4 +1,5 @@
 import logging
+import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from config import settings
@@ -51,3 +52,13 @@ async def init_db():
     from models.db_models import Base as _Base  # noqa: F811
     async with async_engine.begin() as conn:
         await conn.run_sync(_Base.metadata.create_all)
+        # 自动添加缺失的列（create_all 不会修改已有表）
+        for col_name, col_def in [
+            ("video_tags", "TEXT DEFAULT ''"),
+        ]:
+            try:
+                await conn.execute(
+                    sqlalchemy.text(f"ALTER TABLE videos ADD COLUMN IF NOT EXISTS {col_name} {col_def}")
+                )
+            except Exception:
+                pass
