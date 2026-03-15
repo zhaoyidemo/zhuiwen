@@ -85,6 +85,24 @@ async def batch_update_video_stats(db: AsyncSession, stats: dict[str, dict]) -> 
     await db.commit()
 
 
+async def batch_update_play_count(db: AsyncSession, play_updates: dict[str, int]) -> None:
+    """只更新播放量，collect_rate 和 engagement_rate 用数据库现有数据计算"""
+    from sqlalchemy import case, cast, Float
+    for aweme_id, play_count in play_updates.items():
+        await db.execute(
+            update(Video)
+            .where(Video.aweme_id == aweme_id)
+            .values(
+                play_count=play_count,
+                collect_rate=cast(Video.collect_count, Float) / play_count,
+                engagement_rate=cast(
+                    Video.digg_count + Video.comment_count + Video.share_count + Video.collect_count, Float
+                ) / play_count,
+            )
+        )
+    await db.commit()
+
+
 async def save_video_history(db: AsyncSession, video_data: dict) -> dict:
     aweme_id = video_data.get("aweme_id", "")
     entry = VideoHistory(aweme_id=aweme_id, data=video_data)

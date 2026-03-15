@@ -51,38 +51,24 @@ async def batch_video_stats(aweme_ids: list[str], db: AsyncSession = Depends(get
         )
         stats_list = data.get("data", {}).get("statistics_list", []) or []
         result = {}
-        db_updates = {}
+        play_updates = {}
         for s in stats_list:
             if isinstance(s, dict) and s.get("aweme_id"):
                 aid = str(s["aweme_id"])
                 play = s.get("play_count", 0) or 0
-                digg = s.get("digg_count", 0) or 0
-                comment = s.get("comment_count", 0) or 0
-                collect = s.get("collect_count", 0) or 0
-                share = s.get("share_count", 0) or 0
                 result[aid] = {
                     "play_count": play,
-                    "digg_count": digg,
-                    "comment_count": comment,
-                    "collect_count": collect,
-                    "share_count": share,
+                    "digg_count": s.get("digg_count", 0) or 0,
+                    "share_count": s.get("share_count", 0) or 0,
                 }
                 if play > 0:
-                    db_updates[aid] = {
-                        "play_count": play,
-                        "digg_count": digg,
-                        "comment_count": comment,
-                        "collect_count": collect,
-                        "share_count": share,
-                        "collect_rate": round(collect / play, 6),
-                        "engagement_rate": round((digg + comment + share + collect) / play, 6),
-                    }
-        # 更新数据库
-        if db_updates:
+                    play_updates[aid] = play
+        # 只更新 play_count，collect_rate/engagement_rate 用 SQL 从现有数据计算
+        if play_updates:
             try:
-                await db_service.batch_update_video_stats(db, db_updates)
+                await db_service.batch_update_play_count(db, play_updates)
             except Exception as e:
-                logger.warning(f"更新数据库统计失败: {e}")
+                logger.warning(f"更新数据库播放量失败: {e}")
 
         return JSONResponse(content={"stats": result})
     except Exception as e:
