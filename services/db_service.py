@@ -62,32 +62,16 @@ async def delete_account(db: AsyncSession, sec_user_id: str) -> None:
 async def upsert_videos_batch(db: AsyncSession, sec_user_id: str, videos: list[dict]) -> None:
     if not videos:
         return
-    # 不在 upsert 中覆盖的字段（由 batch-stats 单独管理）
-    preserve_fields = {"play_count", "collect_rate", "engagement_rate"}
+    # 播放量和比率由 batch-stats 管理，同步时不覆盖
+    keep_fields = {"play_count", "collect_rate", "engagement_rate"}
     for v in videos:
         v["account_sec_user_id"] = sec_user_id
     stmt = insert(Video).values(videos)
-    update_cols = {}
-    for k in videos[0]:
-        if k == "aweme_id":
-            continue
-        if k in preserve_fields:
-            # 保留数据库中更大的播放量，rates 跟随
-            if k == "play_count":
-                update_cols[k] = func.greatest(Video.play_count, stmt.excluded[k])
-            elif k == "collect_rate":
-                # 如果数据库播放量更大则保留数据库值，否则用新值
-                update_cols[k] = case(
-                    (Video.play_count > stmt.excluded.play_count, Video.collect_rate),
-                    else_=stmt.excluded[k],
-                )
-            elif k == "engagement_rate":
-                update_cols[k] = case(
-                    (Video.play_count > stmt.excluded.play_count, Video.engagement_rate),
-                    else_=stmt.excluded[k],
-                )
-        else:
-            update_cols[k] = stmt.excluded[k]
+    update_cols = {
+        k: stmt.excluded[k]
+        for k in videos[0]
+        if k != "aweme_id" and k not in keep_fields
+    }
     stmt = stmt.on_conflict_do_update(index_elements=["aweme_id"], set_=update_cols)
     await db.execute(stmt)
     await db.commit()
