@@ -104,10 +104,11 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
     if cover_list:
         cover_url = cover_list[0]
 
-    # 共创信息
+    # 共创信息（多作者 = 共创视频）
     mix_info = item.get("mix_info", {}) or {}
-    co_creation = item.get("common_bar_info", None)
-    is_co_creation = bool(co_creation) or bool(item.get("duet_origin_item", None))
+    co_author_list = item.get("co_author_list", []) or item.get("mixed_author_list", []) or []
+    is_co_creation = len(co_author_list) > 0
+    co_creation_names = ", ".join([a.get("nickname", "") for a in co_author_list if a.get("nickname")])
 
     # 发布时间
     create_time_ts = item.get("create_time", 0)
@@ -136,7 +137,7 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
         video_url=video_url,
         cover_url=cover_url,
         is_co_creation=is_co_creation,
-        co_creation_users="",
+        co_creation_users=co_creation_names,
         source_url=source_url,
         author_nickname=author.get("nickname", ""),
         author_avatar=(author.get("avatar_thumb", {}) or {}).get("url_list", [""])[0] if author.get("avatar_thumb") else "",
