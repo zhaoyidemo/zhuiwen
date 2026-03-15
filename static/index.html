@@ -777,12 +777,15 @@ function app() {
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
         const newVideos = result.videos || [];
 
-        // 合并：新数据为基础，保留旧数据中的播放量
+        // 合并：新数据为基础，保留旧数据中更大的播放量（batch-stats 更准确）
         this.competitorVideos = newVideos.map(v => {
           const old = oldMap[v.aweme_id];
-          if (old && old.play_count > 0 && !v.play_count) {
+          if (old && old.play_count > 0 && old.play_count >= (v.play_count || 0)) {
             v.play_count = old.play_count;
+          }
+          if (v.play_count > 0) {
             v.collect_rate = v.collect_count / v.play_count;
+            v.engagement_rate = (v.digg_count + v.comment_count + v.share_count + v.collect_count) / v.play_count;
           }
           return v;
         });
