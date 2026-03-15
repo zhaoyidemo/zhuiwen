@@ -675,12 +675,20 @@ async def fetch_kol_conversion_ability(kol_id: str, _range: str = "_1") -> dict:
 
 
 async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) -> dict:
-    """获取视频评论"""
-    data = await _request(
-        "GET",
-        "/api/v1/douyin/web/fetch_video_comments",
-        params={"aweme_id": aweme_id, "cursor": cursor, "count": count},
-    )
+    """获取视频评论（Web API 优先，失败则用 App V3）"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/web/fetch_video_comments",
+            params={"aweme_id": aweme_id, "cursor": cursor, "count": count},
+        )
+    except Exception:
+        logger.info("Web 评论接口失败，尝试 App V3")
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/app/v3/fetch_post_comment",
+            params={"aweme_id": aweme_id, "cursor": cursor, "count": count},
+        )
     result_data = data.get("data", {})
     comments = result_data.get("comments", []) or []
     has_more = result_data.get("has_more", False)

@@ -100,25 +100,16 @@ async def clear_video_history(db: AsyncSession = Depends(get_db)):
 
 @router.get("/{aweme_id}/extended")
 async def get_video_extended(aweme_id: str, duration: int = 0):
-    """获取视频扩展数据：评论、趋势"""
-    result = {"comments": [], "trends": []}
+    """获取视频评论数据"""
+    result = {"comments": []}
 
-    # 评论（含回复数）
     try:
         comment_data = await tikhub_service.fetch_video_comments(aweme_id, cursor=0, count=50)
         result["comments"] = comment_data.get("comments", [])
     except Exception as e:
         logger.warning(f"评论获取失败: {e}")
 
-    # 视频趋势
-    try:
-        trends = await tikhub_service.fetch_video_trends(aweme_id, date_window=30)
-        if isinstance(trends, list):
-            result["trends"] = trends
-    except Exception as e:
-        logger.warning(f"趋势获取失败: {e}")
-
-    logger.info(f"Extended: comments={len(result['comments'])}, trends={len(result['trends'])}")
+    logger.info(f"Extended: comments={len(result['comments'])}")
     return JSONResponse(content=result)
 
 
