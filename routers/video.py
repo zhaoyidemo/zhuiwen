@@ -100,24 +100,37 @@ async def clear_video_history(db: AsyncSession = Depends(get_db)):
 
 @router.get("/{aweme_id}/extended")
 async def get_video_extended(aweme_id: str, duration: int = 0):
-    """获取视频扩展数据：评论热词、弹幕"""
-    result = {"comments": [], "danmaku": []}
+    """获取视频扩展数据：评论、趋势"""
+    result = {"comments": [], "trends": []}
 
+    # 评论（含回复数）
     try:
         comment_data = await tikhub_service.fetch_video_comments(aweme_id, cursor=0, count=50)
         result["comments"] = comment_data.get("comments", [])
     except Exception as e:
         logger.warning(f"评论获取失败: {e}")
 
+    # 视频趋势
     try:
-        danmaku = await tikhub_service.fetch_video_danmaku(aweme_id, duration=duration)
-        if isinstance(danmaku, list):
-            result["danmaku"] = danmaku
+        trends = await tikhub_service.fetch_video_trends(aweme_id, date_window=30)
+        if isinstance(trends, list):
+            result["trends"] = trends
     except Exception as e:
-        logger.warning(f"弹幕获取失败: {e}")
+        logger.warning(f"趋势获取失败: {e}")
 
-    logger.info(f"Extended: comments={len(result['comments'])}, danmaku={len(result['danmaku'])}")
+    logger.info(f"Extended: comments={len(result['comments'])}, trends={len(result['trends'])}")
     return JSONResponse(content=result)
+
+
+@router.get("/{aweme_id}/comment-replies")
+async def get_comment_replies(aweme_id: str, comment_id: str, cursor: int = 0):
+    """获取评论的回复列表"""
+    try:
+        result = await tikhub_service.fetch_comment_replies(aweme_id, comment_id, cursor=cursor, count=20)
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.warning(f"评论回复获取失败: {e}")
+        return JSONResponse(content={"replies": [], "has_more": False})
 
 
 @router.get("/{aweme_id}", response_model=VideoData)

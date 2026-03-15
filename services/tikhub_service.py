@@ -90,6 +90,10 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
     text_extra = item.get("text_extra", []) or []
     tags = ", ".join([t.get("hashtag_name", "") for t in text_extra if t.get("hashtag_name")])
 
+    # 提取抖音内容分类标签
+    video_tag_list = item.get("video_tag", []) or []
+    video_tags = ", ".join([t.get("tag_name", "") for t in video_tag_list if isinstance(t, dict) and t.get("tag_name")])
+
     # 提取无水印视频链接
     play_addr = video.get("play_addr", {}) or {}
     video_url = ""
@@ -133,6 +137,7 @@ def _parse_video_data(item: dict, source_url: str = "") -> VideoData:
         collect_rate=collect_rate,
         engagement_rate=engagement_rate,
         tags=tags,
+        video_tags=video_tags,
         music_title=music.get("title", ""),
         video_url=video_url,
         cover_url=cover_url,
@@ -690,8 +695,38 @@ async def fetch_video_comments(aweme_id: str, cursor: int = 0, count: int = 20) 
             "user_nickname": user.get("nickname", ""),
             "content": c.get("text", ""),
             "digg_count": c.get("digg_count", 0),
-            "reply_count": len(c.get("reply_comment", []) or []),
+            "reply_count": c.get("reply_comment_total", 0) or len(c.get("reply_comment", []) or []),
             "create_time": c.get("create_time", 0),
         })
 
     return {"comments": parsed, "has_more": has_more, "next_cursor": next_cursor}
+
+
+async def fetch_comment_replies(aweme_id: str, comment_id: str, cursor: int = 0, count: int = 20) -> dict:
+    """获取评论回复列表"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/web/fetch_post_comment_reply",
+            params={"aweme_id": aweme_id, "comment_id": comment_id, "cursor": cursor, "count": count},
+        )
+        result_data = data.get("data", {})
+        replies = result_data.get("comments", []) or []
+        parsed = []
+        for r in replies:
+            user = r.get("user", {}) or {}
+            parsed.append({
+                "comment_id": str(r.get("cid", "")),
+                "user_nickname": user.get("nickname", ""),
+                "content": r.get("text", ""),
+                "digg_count": r.get("digg_count", 0),
+                "create_time": r.get("create_time", 0),
+            })
+        return {
+            "replies": parsed,
+            "has_more": result_data.get("has_more", False),
+            "next_cursor": result_data.get("cursor", 0),
+        }
+    except Exception as e:
+        logger.warning(f"获取评论回复失败: {e}")
+        return {"replies": [], "has_more": False, "next_cursor": 0}

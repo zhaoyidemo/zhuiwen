@@ -51,6 +51,7 @@ class Video(Base):
     collect_rate: Mapped[float] = mapped_column(Float, default=0.0)
     engagement_rate: Mapped[float] = mapped_column(Float, default=0.0)
     tags: Mapped[str] = mapped_column(Text, default="")
+    video_tags: Mapped[str] = mapped_column(Text, default="")
     music_title: Mapped[str] = mapped_column(String(512), default="")
     video_url: Mapped[str] = mapped_column(Text, default="")
     cover_url: Mapped[str] = mapped_column(Text, default="")

@@ -214,6 +214,7 @@ def _video_to_dict(obj: Video) -> dict:
         "collect_rate": obj.collect_rate,
         "engagement_rate": obj.engagement_rate,
         "tags": obj.tags,
+        "video_tags": obj.video_tags,
         "music_title": obj.music_title,
         "video_url": obj.video_url,
         "cover_url": obj.cover_url,
