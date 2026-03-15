@@ -65,7 +65,25 @@ async def remove_account(sec_user_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{sec_user_id}/sync")
 async def sync_account_videos(sec_user_id: str, db: AsyncSession = Depends(get_db)):
-    """同步账号的所有视频数据"""
+    """同步账号信息 + 所有视频数据"""
+    account_update = None
+
+    # 第一步：刷新账号信息（粉丝数等）
+    try:
+        existing = await db_service.get_account_by_sec_user_id(db, sec_user_id)
+        if existing and existing.get("unique_id"):
+            profile = await tikhub_service.fetch_user_profile(existing["unique_id"])
+            profile_data = jsonable_encoder(profile)
+            profile_data["sec_user_id"] = sec_user_id
+            profile_data["category"] = existing.get("category", "竞品")
+            profile_data["is_own_account"] = existing.get("is_own_account", False)
+            await db_service.upsert_account(db, profile_data)
+            account_update = profile_data
+            logger.info(f"账号信息已刷新: {profile_data.get('nickname')}, 粉丝: {profile_data.get('follower_count')}")
+    except Exception as e:
+        logger.warning(f"刷新账号信息失败（不影响视频同步）: {e}")
+
+    # 第二步：拉取视频列表
     try:
         videos = await tikhub_service.fetch_all_user_videos(sec_user_id)
     except Exception as e:
@@ -93,6 +111,7 @@ async def sync_account_videos(sec_user_id: str, db: AsyncSession = Depends(get_d
         "message": f"同步完成，共 {len(videos_data)} 条视频",
         "total": len(videos_data),
         "videos": videos_data,
+        "account": account_update,
     })
 
 

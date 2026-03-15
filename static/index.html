@@ -774,6 +774,10 @@ function app() {
       this.syncingId = acc.sec_user_id; this.accountError = '';
       try {
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
+        // 更新账号信息（粉丝数等）
+        if (result.account) {
+          Object.assign(acc, result.account);
+        }
         this.competitorVideos = result.videos || [];
         this.selectedAccount = acc;
         acc._lastSync = new Date().toLocaleString('zh-CN');

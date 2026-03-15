@@ -47,6 +47,12 @@ async def get_accounts(db: AsyncSession) -> list[dict]:
     return accounts
 
 
+async def get_account_by_sec_user_id(db: AsyncSession, sec_user_id: str) -> dict | None:
+    result = await db.execute(select(Account).where(Account.sec_user_id == sec_user_id))
+    acc = result.scalars().first()
+    return _account_to_dict(acc) if acc else None
+
+
 async def delete_account(db: AsyncSession, sec_user_id: str) -> None:
     await db.execute(delete(Video).where(Video.account_sec_user_id == sec_user_id))
     await db.execute(delete(Account).where(Account.sec_user_id == sec_user_id))
