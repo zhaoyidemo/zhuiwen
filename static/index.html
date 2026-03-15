@@ -778,7 +778,9 @@ function app() {
         if (result.account) {
           Object.assign(acc, result.account);
         }
-        this.competitorVideos = result.videos || [];
+        // 从数据库加载视频（保留已有的播放量和比率）
+        const dbVideos = await this.api('GET', '/account/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
+        this.competitorVideos = dbVideos.videos || [];
         this.selectedAccount = acc;
         acc._lastSync = new Date().toLocaleString('zh-CN');
         this.updateAccountStats(acc);
