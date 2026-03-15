@@ -124,7 +124,7 @@ async def analyze_single_video(
 
     try:
         message = client.messages.create(
-            model="claude-opus-4-6-20250610",
+            model="claude-opus-4-20250514",
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_content}],

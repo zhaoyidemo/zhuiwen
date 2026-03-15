@@ -1088,7 +1088,6 @@ function app() {
       } catch (e) { /* ignore */ }
     },
     async runAiAnalysis(v, idx) {
-      console.log('runAiAnalysis called', v.aweme_id, v._aiPrompt);
       if (v._aiLoading) return;
       try {
         const res = await this.api('POST', '/favorite/' + v.aweme_id + '/analyze', {
