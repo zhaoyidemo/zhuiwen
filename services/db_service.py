@@ -1,7 +1,12 @@
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from models.db_models import Account, Video, VideoHistory
+
+ALLOWED_SORT_FIELDS = {
+    "collect_rate", "engagement_rate", "create_time", "play_count",
+    "digg_count", "comment_count", "collect_count", "share_count", "duration",
+}
 
 
 async def upsert_account(db: AsyncSession, account_data: dict) -> dict:
@@ -18,8 +23,31 @@ async def upsert_account(db: AsyncSession, account_data: dict) -> dict:
 
 
 async def get_accounts(db: AsyncSession) -> list[dict]:
-    result = await db.execute(select(Account).order_by(Account.created_at.desc()))
-    return [_account_to_dict(row) for row in result.scalars().all()]
+    # 查询账号并附带视频数量和平均收藏率
+    video_count_sub = (
+        select(
+            Video.account_sec_user_id,
+            func.count(Video.id).label("_synced"),
+            func.avg(Video.collect_rate).label("_avgCollectRate"),
+            func.max(Video.collect_rate).label("_topCollectRate"),
+        )
+        .group_by(Video.account_sec_user_id)
+        .subquery()
+    )
+    stmt = (
+        select(Account, video_count_sub.c._synced, video_count_sub.c._avgCollectRate, video_count_sub.c._topCollectRate)
+        .outerjoin(video_count_sub, Account.sec_user_id == video_count_sub.c.account_sec_user_id)
+        .order_by(Account.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    accounts = []
+    for row in result.all():
+        acc = _account_to_dict(row[0])
+        acc["_synced"] = row[1] or 0
+        acc["_avgCollectRate"] = round(row[2] or 0, 6)
+        acc["_topCollectRate"] = round(row[3] or 0, 6)
+        accounts.append(acc)
+    return accounts
 
 
 async def delete_account(db: AsyncSession, sec_user_id: str) -> None:
@@ -43,6 +71,8 @@ async def upsert_videos_batch(db: AsyncSession, sec_user_id: str, videos: list[d
 async def get_account_videos(
     db: AsyncSession, sec_user_id: str, sort_by: str = "create_time", order: str = "desc"
 ) -> list[dict]:
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = "create_time"
     col = getattr(Video, sort_by, Video.create_time)
     order_col = col.desc() if order == "desc" else col.asc()
     result = await db.execute(

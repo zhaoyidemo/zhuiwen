@@ -134,26 +134,31 @@ async def get_account_xingtu(sec_user_id: str):
     if not kol_id:
         return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": ""})
 
-    # 第二步：并发调用星图 API
-    (
-        fans_portrait,
-        xingtu_index,
-        service_price,
-        cp_info,
-        convert_videos,
-    ) = await asyncio.gather(
+    # 第二步：并发调用星图 API（部分失败不影响整体）
+    results = await asyncio.gather(
         tikhub_service.fetch_kol_fans_portrait(kol_id),
         tikhub_service.fetch_kol_xingtu_index(kol_id),
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
         tikhub_service.fetch_kol_convert_video_display(kol_id),
+        return_exceptions=True,
     )
+    # 异常结果替换为空值
+    cleaned = []
+    labels = ["fans_portrait", "xingtu_index", "service_price", "cp_info", "convert_videos"]
+    defaults = [{}, {}, {}, {}, []]
+    for i, r in enumerate(results):
+        if isinstance(r, Exception):
+            logger.warning(f"星图 {labels[i]} 失败: {r}")
+            cleaned.append(defaults[i])
+        else:
+            cleaned.append(r)
 
     return JSONResponse(content={
         "kol_id": kol_id,
-        "fans_portrait": fans_portrait,
-        "xingtu_index": xingtu_index,
-        "service_price": service_price,
-        "cp_info": cp_info,
-        "convert_videos": convert_videos,
+        "fans_portrait": cleaned[0],
+        "xingtu_index": cleaned[1],
+        "service_price": cleaned[2],
+        "cp_info": cleaned[3],
+        "convert_videos": cleaned[4],
     })

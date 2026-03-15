@@ -744,11 +744,17 @@ function app() {
     async selectAccount(acc) {
       this.selectedAccount = acc;
       this.xingtuData = null;
+      this.accountError = '';
+      this.syncingId = acc.sec_user_id;
       try {
         const res = await this.api('GET', '/account/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
         this.competitorVideos = res.videos || [];
         this.updateAccountStats(acc);
-      } catch (e) { this.competitorVideos = []; }
+      } catch (e) {
+        this.competitorVideos = [];
+        this.accountError = '加载视频失败: ' + e.message;
+      }
+      this.syncingId = null;
       this.sortVideos();
     },
 
