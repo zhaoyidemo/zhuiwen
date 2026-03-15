@@ -193,7 +193,12 @@
                       <svg x-show="extendedLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                       深度分析
                     </button>
-                    <span class="flex items-center gap-1 text-xs text-emerald-500">✓ 已同步至飞书</span>
+                    <button @click="toggleFavorite(videoData)"
+                      class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm transition-colors"
+                      :class="isFavorited(videoData.aweme_id) ? 'bg-amber-100 text-amber-600' : 'bg-amber-50 text-amber-500 hover:bg-amber-100'">
+                      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                      <span x-text="isFavorited(videoData.aweme_id) ? '已收藏' : '爆款收藏'"></span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -595,47 +600,84 @@
           <h2 class="text-2xl font-bold text-gray-800 mb-1">爆款收藏</h2>
           <p class="text-sm text-gray-500 mb-6">收藏的高质量视频，快照保存关键数据</p>
 
-          <div x-show="favoriteVideos.length" class="space-y-3">
+          <div x-show="favoriteVideos.length" class="space-y-6">
             <template x-for="(v, idx) in favoriteVideos" :key="v.aweme_id">
-              <div class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                <div class="flex">
-                  <div class="w-32 h-24 shrink-0 bg-gray-100 relative" x-show="v.cover_url">
-                    <img :src="v.cover_url" class="w-full h-full object-cover" loading="lazy">
-                    <span class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 rounded" x-show="v.duration" x-text="fmtDuration(v.duration)"></span>
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div class="flex flex-col md:flex-row">
+                  <div class="md:w-72 shrink-0 bg-black flex items-center justify-center" x-show="v.cover_url">
+                    <img :src="v.cover_url" class="w-full h-full object-contain max-h-96" loading="lazy">
                   </div>
-                  <div class="flex-1 p-3 min-w-0">
-                    <div class="flex items-start justify-between gap-2 mb-1">
-                      <p class="text-gray-800 text-sm line-clamp-2" x-text="v.desc || '(无描述)'"></p>
-                      <div class="flex items-center gap-1 shrink-0">
-                        <button @click="refreshFavorite(v, idx)" :disabled="favoriteRefreshing === v.aweme_id"
-                          class="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                          title="刷新数据">
-                          <svg :class="favoriteRefreshing === v.aweme_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                        </button>
-                        <button @click="toggleFavorite(v)"
-                          class="w-6 h-6 flex items-center justify-center rounded-full text-amber-500 hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="取消收藏">
-                          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        </button>
+                  <div class="flex-1 p-6">
+                    <!-- 作者 -->
+                    <div class="flex items-center gap-3 mb-4">
+                      <img x-show="v.author_avatar" :src="v.author_avatar" class="w-10 h-10 rounded-full">
+                      <div class="flex-1 min-w-0">
+                        <p class="font-medium text-gray-800" x-text="v.author_nickname || '未知作者'"></p>
+                        <p class="text-xs text-gray-400">
+                          @<span x-text="v.author_unique_id"></span>
+                          <span x-show="v._fav_at" class="text-amber-400 ml-2" x-text="'收藏于 ' + v._fav_at"></span>
+                        </p>
                       </div>
                     </div>
-                    <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
-                      <span x-show="v.author_nickname" class="text-gray-500" x-text="'@' + (v.author_unique_id || v.author_nickname)"></span>
-                      <span x-text="v.create_time"></span>
-                      <span x-show="v._fav_at" class="text-amber-400" x-text="'收藏于 ' + v._fav_at"></span>
+                    <p class="text-gray-700 text-sm leading-relaxed mb-4" x-text="v.desc || '(无描述)'"></p>
+
+                    <!-- 收藏率高亮 -->
+                    <div class="rounded-xl border p-4 mb-4" :class="rateBgClass(v.collect_rate)">
+                      <div class="flex items-end justify-between">
+                        <div>
+                          <p class="text-xs text-gray-500 mb-1">收藏率</p>
+                          <p class="text-3xl font-bold tabular-nums" :class="rateColorClass(v.collect_rate)" x-text="fmtRate(v.collect_rate)"></p>
+                        </div>
+                        <div x-show="v.engagement_rate > 0">
+                          <p class="text-xs text-gray-500 mb-1">互动率</p>
+                          <p class="text-2xl font-bold tabular-nums text-indigo-500" x-text="fmtRate(v.engagement_rate)"></p>
+                        </div>
+                      </div>
                     </div>
-                    <div class="flex flex-wrap gap-3 text-xs text-gray-500">
-                      <span x-show="v.play_count">▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
-                      <span>❤ <span x-text="fmtNum(v.digg_count)" class="tabular-nums"></span></span>
-                      <span>💬 <span x-text="fmtNum(v.comment_count)" class="tabular-nums"></span></span>
-                      <span>⭐ <span x-text="fmtNum(v.collect_count)" class="tabular-nums"></span></span>
-                      <span>↗ <span x-text="fmtNum(v.share_count)" class="tabular-nums"></span></span>
-                      <span class="font-semibold" :class="rateColorClass(v.collect_rate)">
-                        收藏率 <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span>
-                      </span>
-                      <span x-show="v.engagement_rate > 0" class="font-semibold text-indigo-500">
-                        互动率 <span x-text="fmtRate(v.engagement_rate)" class="tabular-nums"></span>
-                      </span>
+
+                    <!-- 互动数据 -->
+                    <div class="grid grid-cols-5 gap-3 mb-4">
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(v.play_count || 0)"></p>
+                        <p class="text-[10px] text-gray-400">播放</p>
+                      </div>
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(v.digg_count || 0)"></p>
+                        <p class="text-[10px] text-gray-400">点赞</p>
+                      </div>
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(v.comment_count || 0)"></p>
+                        <p class="text-[10px] text-gray-400">评论</p>
+                      </div>
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(v.collect_count || 0)"></p>
+                        <p class="text-[10px] text-gray-400">收藏</p>
+                      </div>
+                      <div class="text-center p-2 bg-gray-50 rounded-lg">
+                        <p class="text-sm font-semibold text-gray-800 tabular-nums" x-text="fmtNum(v.share_count || 0)"></p>
+                        <p class="text-[10px] text-gray-400">转发</p>
+                      </div>
+                    </div>
+
+                    <!-- 元信息 -->
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 mb-4">
+                      <span>发布 <span x-text="v.create_time"></span></span>
+                      <span x-show="v.duration > 0" x-text="'时长 ' + fmtDuration(v.duration)"></span>
+                      <span x-show="v.tags" x-text="v.tags"></span>
+                    </div>
+
+                    <!-- 操作 -->
+                    <div class="flex items-center gap-3 pt-2 border-t border-gray-100">
+                      <button @click="refreshFavorite(v, idx)" :disabled="favoriteRefreshing === v.aweme_id"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 disabled:bg-gray-100 disabled:text-gray-400 transition-colors">
+                        <svg :class="favoriteRefreshing === v.aweme_id ? 'animate-spin' : ''" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                        <span x-text="favoriteRefreshing === v.aweme_id ? '刷新中...' : '刷新数据'"></span>
+                      </button>
+                      <button @click="toggleFavorite(v)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-500 rounded-lg text-sm hover:bg-red-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        取消收藏
+                      </button>
                     </div>
                   </div>
                 </div>
