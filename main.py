@@ -1,6 +1,7 @@
 import os
 import logging
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,11 +16,19 @@ try:
     from config import settings
     from routers import video, account, analysis
     from models.schemas import PasswordRequest
+    from database import init_db
 except Exception as e:
     logger.error(f"Import error: {e}")
     raise
 
-app = FastAPI(title="继续追问 | 抖音数据分析平台", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    logger.info("Database initialized")
+    yield
+
+app = FastAPI(title="继续追问 | 抖音数据分析平台", version="1.0.0", lifespan=lifespan)
 
 # CORS
 app.add_middleware(

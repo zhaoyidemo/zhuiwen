@@ -587,6 +587,7 @@ function app() {
     password: '',
     loginError: '',
     loginLoading: false,
+    async init() { if (this.authed) await this.initData(); },
 
     // 导航
     tab: 'video',
@@ -598,12 +599,12 @@ function app() {
     videoData: null,
     extendedData: null,
     extendedLoading: false,
-    videoHistory: JSON.parse(localStorage.getItem('zw_video_history') || '[]'),
+    videoHistory: [],
 
     // 竞品雷达
     uniqueId: '',
     accountCategory: '竞品',
-    accounts: JSON.parse(localStorage.getItem('zw_accounts') || '[]'),
+    accounts: [],
     addingAccount: false,
     accountError: '',
     syncingId: null,
@@ -633,8 +634,21 @@ function app() {
         await this.api('POST', '/auth/verify', { password: this.password });
         localStorage.setItem('site_password', this.password);
         this.authed = true;
+        await this.initData();
       } catch (e) { this.loginError = '密码错误，请重试'; }
       this.loginLoading = false;
+    },
+
+    // 初始化：从数据库加载数据
+    async initData() {
+      try {
+        const [accRes, histRes] = await Promise.all([
+          this.api('GET', '/account/list'),
+          this.api('GET', '/video/history'),
+        ]);
+        this.accounts = accRes.accounts || [];
+        this.videoHistory = (histRes.history || []).map(h => h.data || h);
+      } catch (e) { /* 静默失败 */ }
     },
 
     // 解析视频
@@ -643,12 +657,11 @@ function app() {
       this.videoLoading = true; this.videoError = ''; this.videoData = null; this.extendedData = null;
       try {
         this.videoData = await this.api('POST', '/video/parse', { url: this.videoUrl.trim() });
-        // 保存到历史记录（去重，最多保留50条）
+        // 保存到历史记录（后端已自动存库，前端只更新内存列表）
         if (this.videoData?.aweme_id) {
           this.videoHistory = this.videoHistory.filter(v => v.aweme_id !== this.videoData.aweme_id);
           this.videoHistory.unshift(this.videoData);
           if (this.videoHistory.length > 50) this.videoHistory = this.videoHistory.slice(0, 50);
-          localStorage.setItem('zw_video_history', JSON.stringify(this.videoHistory));
         }
       } catch (e) { this.videoError = e.message; }
       this.videoLoading = false;
@@ -662,9 +675,9 @@ function app() {
     },
 
     // 清空历史
-    clearHistory() {
+    async clearHistory() {
       this.videoHistory = [];
-      localStorage.removeItem('zw_video_history');
+      try { await this.api('DELETE', '/video/history'); } catch (e) { /* ignore */ }
     },
 
     // 加载深度分析数据
@@ -693,13 +706,9 @@ function app() {
       this.extendedLoading = false;
     },
 
-    // 保存账号到 localStorage
-    saveAccounts() { localStorage.setItem('zw_accounts', JSON.stringify(this.accounts)); },
-
     // 添加账号
     async addAccount() {
       if (!this.uniqueId.trim()) return;
-      // 检查重复
       if (this.accounts.some(a => a.unique_id === this.uniqueId.trim())) {
         this.accountError = '该账号已添加'; return;
       }
@@ -707,38 +716,20 @@ function app() {
       try {
         const acc = await this.api('POST', '/account/add', { unique_id: this.uniqueId.trim(), category: this.accountCategory });
         this.accounts.push(acc);
-        this.saveAccounts();
         this.uniqueId = '';
       } catch (e) { this.accountError = e.message; }
       this.addingAccount = false;
     },
 
     // 删除账号
-    removeAccount(acc) {
+    async removeAccount(acc) {
       const uid = acc.sec_user_id || acc.unique_id;
       this.accounts = this.accounts.filter(a => (a.sec_user_id || a.unique_id) !== uid);
-      this.saveAccounts();
-      localStorage.removeItem('zw_vids_' + acc.sec_user_id);
       if (this.selectedAccount && (this.selectedAccount.sec_user_id || this.selectedAccount.unique_id) === uid) {
         this.selectedAccount = null;
         this.competitorVideos = [];
       }
-    },
-
-    // 保存视频数据到 localStorage（按账号）
-    saveVideos(secUid) {
-      localStorage.setItem('zw_vids_' + secUid, JSON.stringify(this.competitorVideos));
-    },
-
-    // 加载缓存的视频数据
-    loadCachedVideos(acc) {
-      const cached = localStorage.getItem('zw_vids_' + acc.sec_user_id);
-      if (cached) {
-        this.competitorVideos = JSON.parse(cached);
-        this.updateAccountStats(acc);
-        return true;
-      }
-      return false;
+      try { await this.api('DELETE', '/account/' + uid); } catch (e) { /* ignore */ }
     },
 
     // 更新账号汇总数据
@@ -749,58 +740,40 @@ function app() {
       acc._topCollectRate = vids.length ? Math.max(...vids.map(v => v.collect_rate || 0)) : 0;
     },
 
-    // 选中账号 → 自动加载缓存
-    selectAccount(acc) {
+    // 选中账号 → 从数据库加载视频
+    async selectAccount(acc) {
       this.selectedAccount = acc;
       this.xingtuData = null;
-      this.loadCachedVideos(acc);
+      try {
+        const res = await this.api('GET', '/account/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
+        this.competitorVideos = res.videos || [];
+        this.updateAccountStats(acc);
+      } catch (e) { this.competitorVideos = []; }
       this.sortVideos();
     },
 
-    // 同步视频（增量合并）
+    // 同步视频（后端存库）
     async syncAccount(acc) {
       if (!acc.sec_user_id && acc.unique_id) {
         try {
           const fresh = await this.api('POST', '/account/add', { unique_id: acc.unique_id, category: acc.category || '竞品' });
           Object.assign(acc, fresh);
-          this.saveAccounts();
         } catch (e) { this.accountError = '刷新账号信息失败: ' + e.message; return; }
       }
       if (!acc.sec_user_id) { this.accountError = '该账号缺少 sec_user_id，请删除后重新添加'; return; }
       this.syncingId = acc.sec_user_id; this.accountError = '';
       try {
-        // 加载已有缓存（保留播放量等已获取数据）
-        const oldVideos = JSON.parse(localStorage.getItem('zw_vids_' + acc.sec_user_id) || '[]');
-        const oldMap = {};
-        oldVideos.forEach(v => { if (v.aweme_id) oldMap[v.aweme_id] = v; });
-
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
-        const newVideos = result.videos || [];
-
-        // 合并：新数据为基础，保留旧数据中更大的播放量（batch-stats 更准确）
-        this.competitorVideos = newVideos.map(v => {
-          const old = oldMap[v.aweme_id];
-          if (old && old.play_count > 0 && old.play_count >= (v.play_count || 0)) {
-            v.play_count = old.play_count;
-          }
-          if (v.play_count > 0) {
-            v.collect_rate = v.collect_count / v.play_count;
-            v.engagement_rate = (v.digg_count + v.comment_count + v.share_count + v.collect_count) / v.play_count;
-          }
-          return v;
-        });
-
+        this.competitorVideos = result.videos || [];
         this.selectedAccount = acc;
         acc._lastSync = new Date().toLocaleString('zh-CN');
         this.updateAccountStats(acc);
-        this.saveAccounts();
-        this.saveVideos(acc.sec_user_id);
         this.sortVideos();
       } catch (e) { this.accountError = e.message; }
       this.syncingId = null;
     },
 
-    // 逐批补充播放量（每次2个）
+    // 逐批补充播放量（每次2个，后端自动更新数据库）
     async fillPlayCount() {
       if (this.fillingPlay || !this.competitorVideos.length || !this.selectedAccount) return;
       this.fillingPlay = true;
@@ -826,13 +799,8 @@ function app() {
           });
         } catch (e) { /* 继续下一批 */ }
         done += batch.length;
-        // 每10条保存一次进度
-        if (done % 10 === 0) this.saveVideos(this.selectedAccount.sec_user_id);
       }
-      // 最终保存
-      this.saveVideos(this.selectedAccount.sec_user_id);
       this.updateAccountStats(this.selectedAccount);
-      this.saveAccounts();
       this.fillProgress = `完成！${filled}/${total} 条获取到播放量`;
       this.fillingPlay = false;
       this.sortVideos();

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     FEISHU_TABLE_SNAPSHOTS: str = ""
     FEISHU_TABLE_COMMENTS: str = ""
     FEISHU_TABLE_ANALYSES: str = ""
+    DATABASE_URL: str = ""
     SITE_PASSWORD: str = "zhuiwen2024"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
