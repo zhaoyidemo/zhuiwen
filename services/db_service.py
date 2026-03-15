@@ -23,30 +23,23 @@ async def upsert_account(db: AsyncSession, account_data: dict) -> dict:
 
 
 async def get_accounts(db: AsyncSession) -> list[dict]:
-    # 查询账号并附带视频数量和平均收藏率
-    video_count_sub = (
-        select(
-            Video.account_sec_user_id,
-            func.count(Video.id).label("_synced"),
-            func.avg(Video.collect_rate).label("_avgCollectRate"),
-            func.max(Video.collect_rate).label("_topCollectRate"),
-        )
-        .group_by(Video.account_sec_user_id)
-        .subquery()
-    )
-    stmt = (
-        select(Account, video_count_sub.c._synced, video_count_sub.c._avgCollectRate, video_count_sub.c._topCollectRate)
-        .outerjoin(video_count_sub, Account.sec_user_id == video_count_sub.c.account_sec_user_id)
-        .order_by(Account.created_at.desc())
-    )
-    result = await db.execute(stmt)
+    result = await db.execute(select(Account).order_by(Account.created_at.desc()))
     accounts = []
-    for row in result.all():
-        acc = _account_to_dict(row[0])
-        acc["_synced"] = row[1] or 0
-        acc["_avgCollectRate"] = round(row[2] or 0, 6)
-        acc["_topCollectRate"] = round(row[3] or 0, 6)
-        accounts.append(acc)
+    for acc in result.scalars().all():
+        d = _account_to_dict(acc)
+        # 单独查询视频统计
+        stats = await db.execute(
+            select(
+                func.count(Video.id),
+                func.avg(Video.collect_rate),
+                func.max(Video.collect_rate),
+            ).where(Video.account_sec_user_id == acc.sec_user_id)
+        )
+        row = stats.one()
+        d["_synced"] = row[0] or 0
+        d["_avgCollectRate"] = round(float(row[1] or 0), 6)
+        d["_topCollectRate"] = round(float(row[2] or 0), 6)
+        accounts.append(d)
     return accounts
 
 
