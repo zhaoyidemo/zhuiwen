@@ -70,6 +70,20 @@ class Video(Base):
     )
 
 
+class VideoFavorite(Base):
+    __tablename__ = "video_favorites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    aweme_id: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_video_favorites_aweme_id", "aweme_id", unique=True),
+    )
+
+
 class VideoHistory(Base):
     __tablename__ = "video_history"
 

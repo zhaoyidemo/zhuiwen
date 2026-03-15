@@ -66,6 +66,11 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
             竞品雷达
           </button>
+          <button @click="tab='favorites'" :class="tab==='favorites' ? 'bg-amber-600/20 text-amber-400' : 'hover:bg-gray-800 text-gray-400'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            爆款收藏 <span x-show="favoriteVideos.length" class="ml-auto text-[10px] bg-amber-600/30 text-amber-400 px-1.5 py-0.5 rounded" x-text="favoriteVideos.length"></span>
+          </button>
           <button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left text-gray-600 cursor-default">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             作战仪表盘 <span class="ml-auto text-[10px] bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded">V2</span>
@@ -544,7 +549,15 @@
                       <span class="absolute top-1 left-1 bg-black/50 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full" x-text="idx + 1"></span>
                     </div>
                     <div class="flex-1 p-3 min-w-0">
-                      <p class="text-gray-800 text-sm line-clamp-2 mb-1" x-text="v.desc || '(无描述)'"></p>
+                      <div class="flex items-start justify-between gap-2 mb-1">
+                        <p class="text-gray-800 text-sm line-clamp-2" x-text="v.desc || '(无描述)'"></p>
+                        <button @click.stop="toggleFavorite(v)"
+                          class="shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-colors"
+                          :class="isFavorited(v.aweme_id) ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'"
+                          :title="isFavorited(v.aweme_id) ? '取消收藏' : '爆款收藏'">
+                          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        </button>
+                      </div>
                       <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
                         <span x-text="v.create_time"></span>
                         <span x-show="v.is_co_creation" class="text-purple-500">共创</span>
@@ -575,6 +588,67 @@
             <p class="text-lg mb-2">尚未添加竞品账号</p>
             <p class="text-sm">输入抖音号开始追踪</p>
           </div>
+        </div>
+
+        <!-- 爆款收藏 -->
+        <div x-show="tab==='favorites'" class="p-6">
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">爆款收藏</h2>
+          <p class="text-sm text-gray-500 mb-6">收藏的高质量视频，快照保存关键数据</p>
+
+          <div x-show="favoriteVideos.length" class="space-y-3">
+            <template x-for="(v, idx) in favoriteVideos" :key="v.aweme_id">
+              <div class="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                <div class="flex">
+                  <div class="w-32 h-24 shrink-0 bg-gray-100 relative" x-show="v.cover_url">
+                    <img :src="v.cover_url" class="w-full h-full object-cover" loading="lazy">
+                    <span class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 rounded" x-show="v.duration" x-text="fmtDuration(v.duration)"></span>
+                  </div>
+                  <div class="flex-1 p-3 min-w-0">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                      <p class="text-gray-800 text-sm line-clamp-2" x-text="v.desc || '(无描述)'"></p>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button @click="refreshFavorite(v, idx)" :disabled="favoriteRefreshing === v.aweme_id"
+                          class="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                          title="刷新数据">
+                          <svg :class="favoriteRefreshing === v.aweme_id ? 'animate-spin' : ''" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                        </button>
+                        <button @click="toggleFavorite(v)"
+                          class="w-6 h-6 flex items-center justify-center rounded-full text-amber-500 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="取消收藏">
+                          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-gray-400 mb-2">
+                      <span x-show="v.author_nickname" class="text-gray-500" x-text="'@' + (v.author_unique_id || v.author_nickname)"></span>
+                      <span x-text="v.create_time"></span>
+                      <span x-show="v._fav_at" class="text-amber-400" x-text="'收藏于 ' + v._fav_at"></span>
+                    </div>
+                    <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                      <span x-show="v.play_count">▶ <span x-text="fmtNum(v.play_count)" class="tabular-nums"></span></span>
+                      <span>❤ <span x-text="fmtNum(v.digg_count)" class="tabular-nums"></span></span>
+                      <span>💬 <span x-text="fmtNum(v.comment_count)" class="tabular-nums"></span></span>
+                      <span>⭐ <span x-text="fmtNum(v.collect_count)" class="tabular-nums"></span></span>
+                      <span>↗ <span x-text="fmtNum(v.share_count)" class="tabular-nums"></span></span>
+                      <span class="font-semibold" :class="rateColorClass(v.collect_rate)">
+                        收藏率 <span x-text="fmtRate(v.collect_rate)" class="tabular-nums"></span>
+                      </span>
+                      <span x-show="v.engagement_rate > 0" class="font-semibold text-indigo-500">
+                        互动率 <span x-text="fmtRate(v.engagement_rate)" class="tabular-nums"></span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div x-show="!favoriteVideos.length" class="text-center py-20 text-gray-400">
+            <p class="text-lg mb-2">暂无收藏</p>
+            <p class="text-sm">在竞品雷达的视频列表中点击星标收藏爆款视频</p>
+          </div>
+        </div>
+
         </div>
       </main>
     </div>
@@ -618,6 +692,10 @@ function app() {
     xingtuData: null,
     xingtuLoading: false,
 
+    // 爆款收藏
+    favoriteVideos: [],
+    favoriteRefreshing: null,
+
     // API 请求
     async api(method, path, body = null) {
       const headers = { 'Content-Type': 'application/json', 'X-Site-Password': localStorage.getItem('site_password') || '' };
@@ -644,12 +722,14 @@ function app() {
     // 初始化：从数据库加载数据
     async initData() {
       try {
-        const [accRes, histRes] = await Promise.all([
+        const [accRes, histRes, favRes] = await Promise.all([
           this.api('GET', '/account/list'),
           this.api('GET', '/video/history'),
+          this.api('GET', '/favorite/list'),
         ]);
         this.accounts = accRes.accounts || [];
         this.videoHistory = (histRes.history || []).map(h => h.data || h);
+        this.favoriteVideos = (favRes.favorites || []).map(f => ({ ...f.data, _fav_id: f.id, _fav_at: f.created_at }));
       } catch (e) { /* 静默失败 */ }
     },
 
@@ -820,6 +900,30 @@ function app() {
       this.fillProgress = `完成！${filled}/${total} 条获取到播放量`;
       this.fillingPlay = false;
       this.sortVideos();
+    },
+
+    // 爆款收藏
+    isFavorited(awemeId) {
+      return this.favoriteVideos.some(f => f.aweme_id === awemeId);
+    },
+    async toggleFavorite(v) {
+      if (this.isFavorited(v.aweme_id)) {
+        this.favoriteVideos = this.favoriteVideos.filter(f => f.aweme_id !== v.aweme_id);
+        try { await this.api('DELETE', '/favorite/' + v.aweme_id); } catch (e) { /* ignore */ }
+      } else {
+        this.favoriteVideos.unshift({ ...v, _fav_at: new Date().toLocaleString('zh-CN') });
+        try { await this.api('POST', '/favorite/add', v); } catch (e) { /* ignore */ }
+      }
+    },
+    async refreshFavorite(v, idx) {
+      this.favoriteRefreshing = v.aweme_id;
+      try {
+        const res = await this.api('POST', '/favorite/' + v.aweme_id + '/refresh');
+        if (res.data) {
+          this.favoriteVideos[idx] = { ...res.data, _fav_id: v._fav_id, _fav_at: v._fav_at };
+        }
+      } catch (e) { this.accountError = '刷新失败: ' + e.message; }
+      this.favoriteRefreshing = null;
     },
 
     // 加载星图分析数据

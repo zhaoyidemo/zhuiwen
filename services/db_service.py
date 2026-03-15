@@ -1,7 +1,7 @@
 from sqlalchemy import select, delete, update, func, case
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.db_models import Account, Video, VideoHistory
+from models.db_models import Account, Video, VideoHistory, VideoFavorite
 
 ALLOWED_SORT_FIELDS = {
     "collect_rate", "engagement_rate", "create_time", "play_count",
@@ -116,6 +116,39 @@ async def batch_update_play_count(db: AsyncSession, play_updates: dict[str, int]
                 ) / play_count,
             )
         )
+    await db.commit()
+
+
+async def add_favorite(db: AsyncSession, video_data: dict) -> dict:
+    aweme_id = video_data.get("aweme_id", "")
+    stmt = insert(VideoFavorite).values(aweme_id=aweme_id, data=video_data)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["aweme_id"],
+        set_={"data": video_data},
+    )
+    await db.execute(stmt)
+    await db.commit()
+    return {"ok": True, "aweme_id": aweme_id}
+
+
+async def remove_favorite(db: AsyncSession, aweme_id: str) -> None:
+    await db.execute(delete(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id))
+    await db.commit()
+
+
+async def get_favorites(db: AsyncSession) -> list[dict]:
+    result = await db.execute(
+        select(VideoFavorite).order_by(VideoFavorite.created_at.desc())
+    )
+    return [{"id": f.id, "aweme_id": f.aweme_id, "data": f.data,
+             "created_at": str(f.created_at) if f.created_at else ""}
+            for f in result.scalars().all()]
+
+
+async def update_favorite(db: AsyncSession, aweme_id: str, video_data: dict) -> None:
+    await db.execute(
+        update(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id).values(data=video_data)
+    )
     await db.commit()
 
 

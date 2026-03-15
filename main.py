@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # 延迟导入，确保启动时报错能看到
 try:
     from config import settings
-    from routers import video, account, analysis
+    from routers import video, account, analysis, favorite
     from models.schemas import PasswordRequest
     from database import init_db
 except Exception as e:
@@ -86,6 +86,7 @@ async def verify_password(req: PasswordRequest):
 app.include_router(video.router)
 app.include_router(account.router)
 app.include_router(analysis.router)
+app.include_router(favorite.router)
 
 
 # 静态文件服务 — 放在最后
