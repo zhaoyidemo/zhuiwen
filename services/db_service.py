@@ -33,12 +33,16 @@ async def get_accounts(db: AsyncSession) -> list[dict]:
                 func.count(Video.id),
                 func.avg(Video.collect_rate),
                 func.max(Video.collect_rate),
+                func.avg(Video.engagement_rate),
+                func.max(Video.engagement_rate),
             ).where(Video.account_sec_user_id == acc.sec_user_id)
         )
         row = stats.one()
         d["_synced"] = row[0] or 0
         d["_avgCollectRate"] = round(float(row[1] or 0), 6)
         d["_topCollectRate"] = round(float(row[2] or 0), 6)
+        d["_avgEngagementRate"] = round(float(row[3] or 0), 6)
+        d["_topEngagementRate"] = round(float(row[4] or 0), 6)
         accounts.append(d)
     return accounts
 

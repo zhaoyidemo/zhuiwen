@@ -305,8 +305,10 @@
                 </div>
                 <!-- 同步后的汇总数据 -->
                 <div x-show="acc._synced" class="grid grid-cols-2 gap-2 text-center text-xs mb-3 pt-2 border-t border-gray-100">
-                  <div><p class="font-semibold" :class="rateColorClass(acc._avgCollectRate)" x-text="fmtRate(acc._avgCollectRate)"></p><p class="text-gray-400">平均收藏/赞</p></div>
-                  <div><p class="font-semibold" :class="rateColorClass(acc._topCollectRate)" x-text="fmtRate(acc._topCollectRate)"></p><p class="text-gray-400">最高收藏/赞</p></div>
+                  <div><p class="font-semibold" :class="rateColorClass(acc._avgCollectRate)" x-text="fmtRate(acc._avgCollectRate)"></p><p class="text-gray-400">平均收藏率</p></div>
+                  <div><p class="font-semibold" :class="rateColorClass(acc._topCollectRate)" x-text="fmtRate(acc._topCollectRate)"></p><p class="text-gray-400">最高收藏率</p></div>
+                  <div><p class="font-semibold text-indigo-500" x-text="fmtRate(acc._avgEngagementRate)"></p><p class="text-gray-400">平均互动率</p></div>
+                  <div><p class="font-semibold text-indigo-500" x-text="fmtRate(acc._topEngagementRate)"></p><p class="text-gray-400">最高互动率</p></div>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-[10px] px-2 py-0.5 rounded"
@@ -738,6 +740,8 @@ function app() {
       acc._synced = vids.length;
       acc._avgCollectRate = vids.length ? vids.reduce((s, v) => s + (v.collect_rate || 0), 0) / vids.length : 0;
       acc._topCollectRate = vids.length ? Math.max(...vids.map(v => v.collect_rate || 0)) : 0;
+      acc._avgEngagementRate = vids.length ? vids.reduce((s, v) => s + (v.engagement_rate || 0), 0) / vids.length : 0;
+      acc._topEngagementRate = vids.length ? Math.max(...vids.map(v => v.engagement_rate || 0)) : 0;
     },
 
     // 选中账号 → 从数据库加载视频
