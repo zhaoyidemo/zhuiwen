@@ -744,7 +744,8 @@
                       </div>
                       <!-- 执行分析 -->
                       <button @click="runAiAnalysis(v, idx)" :disabled="v._aiLoading"
-                        class="w-full py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg text-sm font-medium hover:from-violet-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 transition-all flex items-center justify-center gap-2">
+                        class="w-full py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                        :class="v._aiLoading ? 'bg-gray-300 text-gray-500' : 'bg-purple-600 text-white hover:bg-purple-700'">
                         <svg x-show="v._aiLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <span x-text="v._aiLoading ? 'Claude Opus 分析中...' : '开始 AI 分析'"></span>
                       </button>
