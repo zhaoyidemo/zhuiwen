@@ -59,7 +59,7 @@
           <button @click="tab='video'" :class="tab==='video' ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-gray-800 text-gray-400'"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-            视频解剖台
+            视频分析
           </button>
           <button @click="tab='competitor'" :class="tab==='competitor' ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-gray-800 text-gray-400'"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
@@ -86,9 +86,9 @@
       <!-- 主内容 -->
       <main class="flex-1 overflow-auto">
 
-        <!-- 视频解剖台 -->
+        <!-- 视频分析 -->
         <div x-show="tab==='video'" class="p-6 max-w-4xl mx-auto">
-          <h2 class="text-2xl font-bold text-gray-800 mb-1">视频解剖台</h2>
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">视频分析</h2>
           <p class="text-sm text-gray-500 mb-6">粘贴抖音视频链接，一键获取完整数据</p>
 
           <div class="flex gap-3 mb-8">
@@ -762,7 +762,7 @@ function app() {
     // 导航
     tab: 'video',
 
-    // 视频解剖台
+    // 视频分析
     videoUrl: '',
     videoLoading: false,
     videoError: '',
