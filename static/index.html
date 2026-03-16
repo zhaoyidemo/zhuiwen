@@ -383,14 +383,18 @@
               <!-- 星图指数卡片（只过滤系统字段，其余全显示） -->
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <template x-for="key in xingtuCleanKeys(xingtuData.xingtu_index).filter(k => xingtuIndexVal(xingtuData.xingtu_index[k]) !== '')" :key="key">
-                    <div class="text-center p-4 rounded-xl border"
+                    <div class="p-4 rounded-xl border flex flex-col gap-1"
                       :class="xingtuIndexVal(xingtuData.xingtu_index[key]) >= 80 ? 'bg-purple-50 border-purple-200' : xingtuIndexVal(xingtuData.xingtu_index[key]) >= 60 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'">
-                      <p class="text-2xl font-bold tabular-nums"
-                        :class="xingtuIndexVal(xingtuData.xingtu_index[key]) >= 80 ? 'text-purple-600' : xingtuIndexVal(xingtuData.xingtu_index[key]) >= 60 ? 'text-blue-600' : 'text-gray-600'"
-                        x-text="xingtuIndexVal(xingtuData.xingtu_index[key])"></p>
-                      <p class="text-xs text-gray-500 mt-1.5 font-medium" x-text="xingtuLabel(key)"></p>
+                      <div class="flex items-baseline justify-between gap-2">
+                        <span class="text-sm font-semibold text-gray-800" x-text="xingtuLabel(key) || key"></span>
+                        <span class="text-2xl font-bold tabular-nums"
+                          :class="xingtuIndexVal(xingtuData.xingtu_index[key]) >= 80 ? 'text-purple-600' : xingtuIndexVal(xingtuData.xingtu_index[key]) >= 60 ? 'text-blue-600' : 'text-gray-600'"
+                          x-text="xingtuIndexVal(xingtuData.xingtu_index[key])"></span>
+                      </div>
+                      <p class="text-[10px] text-gray-400 font-mono" x-text="key"></p>
+                      <p class="text-xs text-gray-500 leading-relaxed" x-show="xingtuDesc(key)" x-text="xingtuDesc(key)"></p>
                     </div>
                   </template>
                 </div>
@@ -1365,6 +1369,20 @@ function app() {
       'spread_score', 'cooperation_score', 'shop_score', 'growth_score',
       'influence_score', 'star_score', 'cp_score', 'interact_score',
     ]),
+    xingtuDesc(key) {
+      const D = {
+        'spread_score':      '内容被转发、扩散的能力，分高说明粉丝愿意主动传播',
+        'cooperation_score': '历史商单完成率、内容质量、品牌满意度的综合评分',
+        'shop_score':        '内容引导消费、带货转化的能力，投品牌商单最重要的指标',
+        'growth_score':      '发视频后吸引新关注的能力，反映内容对新用户的吸引力',
+        'influence_score':   '综合账号体量、互动与粉丝质量的权重分，与粉丝数强相关',
+        'star_score':        '结合报价与预期效果的花钱效率评分，适合横向比较达人性价比',
+        'cp_score':          '内容在站内自然流量中扩散传播的能力',
+        'interact_score':    '点赞、评论、收藏的综合互动质量，反映粉丝活跃程度',
+        'show_score':        '曝光与播放量相关的分，反映算法推流能力和获量能力',
+      };
+      return D[key] || '';
+    },
     xingtuLabel(key) {
       const L = {
         // 星图指数
