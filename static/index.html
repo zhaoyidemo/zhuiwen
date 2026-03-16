@@ -518,26 +518,6 @@
               </div>
 
               <!-- 商单视频列表 -->
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.convert_videos && xingtuData.convert_videos.length > 0">
-                <h4 class="text-base font-semibold text-gray-800 mb-4">商业内容</h4>
-                <div class="space-y-3">
-                  <template x-for="(v, idx) in xingtuData.convert_videos" :key="idx">
-                    <div class="flex gap-3 p-3 bg-gray-50 rounded-xl">
-                      <!-- 封面 -->
-                      <img x-show="v.cover || v.cover_url || v.image_url" :src="v.cover || v.cover_url || v.image_url" class="w-16 h-16 object-cover rounded-lg shrink-0 bg-gray-200" />
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-gray-800 truncate" x-text="v.title || v.desc || v.aweme_title || '商单视频'"></p>
-                        <p class="text-xs text-gray-500 mt-0.5" x-text="v.brand_name || v.product_name || v.cooperation_name || ''"></p>
-                        <div class="flex gap-3 mt-1.5 text-xs text-gray-500 tabular-nums">
-                          <span x-show="v.play_count || v.vv" x-text="'▶ ' + fmtNum(v.play_count || v.vv)"></span>
-                          <span x-show="v.digg_count || v.like_count" x-text="'♥ ' + fmtNum(v.digg_count || v.like_count)"></span>
-                          <span x-show="v.comment_count" x-text="'💬 ' + fmtNum(v.comment_count)"></span>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-              </div>
 
             </div>
           </template>
@@ -1371,15 +1351,21 @@ function app() {
     ]),
     xingtuDesc(key) {
       const D = {
-        'spread_score':      '内容被转发、扩散的能力，分高说明粉丝愿意主动传播',
-        'cooperation_score': '历史商单完成率、内容质量、品牌满意度的综合评分',
-        'shop_score':        '内容引导消费、带货转化的能力，投品牌商单最重要的指标',
-        'growth_score':      '发视频后吸引新关注的能力，反映内容对新用户的吸引力',
-        'influence_score':   '综合账号体量、互动与粉丝质量的权重分，与粉丝数强相关',
-        'star_score':        '结合报价与预期效果的花钱效率评分，适合横向比较达人性价比',
-        'cp_score':          '内容在站内自然流量中扩散传播的能力',
-        'interact_score':    '点赞、评论、收藏的综合互动质量，反映粉丝活跃程度',
-        'show_score':        '曝光与播放量相关的分，反映算法推流能力和获量能力',
+        'spread_score':        '内容被转发、扩散的能力，分高说明粉丝愿意主动传播',
+        'cooperation_score':   '历史商单完成率、内容质量、品牌满意度的综合评分',
+        'shop_score':          '内容引导消费、带货转化的能力，投品牌商单最重要的指标',
+        'growth_score':        '发视频后吸引新关注的能力，反映内容对新用户的吸引力',
+        'influence_score':     '综合账号体量、互动与粉丝质量的权重分，与粉丝数强相关',
+        'star_score':          '结合报价与预期效果的花钱效率评分，适合横向比较达人性价比',
+        'cp_score':            '内容在站内自然流量中扩散传播的能力',
+        'interact_score':      '点赞、评论、收藏的综合互动质量，反映粉丝活跃程度',
+        'show_score':          '曝光与播放量相关的分，反映算法推流能力和获量能力',
+        'cooperate_index':     '达人历史合作履约质量的综合评分，含完成率、内容质量、品牌满意度',
+        'cp_index':            '综合报价与预期投放效果的性价比评分，适合横向对比多位达人',
+        'link_convert_index':  '带货内容引导用户下单转化的能力，直接反映电商变现效率',
+        'link_shopping_index': '带货内容激发用户购买兴趣、种草商品的能力',
+        'link_spread_index':   '带货内容在站内的自然传播与扩散能力',
+        'link_star_index':     '带货综合能力的总评分，涵盖种草、转化、传播多维度',
       };
       return D[key] || '';
     },
@@ -1389,6 +1375,9 @@ function app() {
         'spread_score': '传播力', 'cooperation_score': '合作力', 'shop_score': '种草力',
         'growth_score': '涨粉力', 'influence_score': '影响力', 'star_score': '综合性价比',
         'cp_score': '传播指数', 'interact_score': '互动指数', 'show_score': '展示指数',
+        'cooperate_index': '合作指数', 'cp_index': '性价比指数',
+        'link_convert_index': '带货转化指数', 'link_shopping_index': '带货种草指数',
+        'link_spread_index': '带货传播指数', 'link_star_index': '带货综合指数',
         // 性价比
         'expect_cpe': '预估CPE', 'expect_cpm': '预估CPM', 'expect_vv': '预估播放量',
         'cpe_1_20': '1-20秒', 'cpe_21_60': '21-60秒', 'cpe_60': '60秒+',

@@ -165,13 +165,12 @@ async def get_account_xingtu(sec_user_id: str, refresh: bool = False, db: AsyncS
         tikhub_service.fetch_kol_xingtu_index(kol_id),
         tikhub_service.fetch_kol_service_price(kol_id),
         tikhub_service.fetch_kol_cp_info(kol_id),
-        tikhub_service.fetch_kol_convert_video_display(kol_id),
         return_exceptions=True,
     )
     # 异常结果替换为空值
     cleaned = []
-    labels = ["fans_portrait", "xingtu_index", "service_price", "cp_info", "convert_videos"]
-    defaults = [{}, {}, {}, {}, []]
+    labels = ["fans_portrait", "xingtu_index", "service_price", "cp_info"]
+    defaults = [{}, {}, {}, {}]
     for i, r in enumerate(results):
         if isinstance(r, Exception):
             logger.warning(f"星图 {labels[i]} 失败: {r}")
@@ -185,10 +184,9 @@ async def get_account_xingtu(sec_user_id: str, refresh: bool = False, db: AsyncS
         "xingtu_index": cleaned[1],
         "service_price": cleaned[2],
         "cp_info": cleaned[3],
-        "convert_videos": cleaned[4],
     }
     # 有任意有效数据时才保存
-    has_data = any([cleaned[0], cleaned[1], cleaned[2], cleaned[3], cleaned[4]])
+    has_data = any([cleaned[0], cleaned[1], cleaned[2], cleaned[3]])
     if has_data:
         try:
             await db_service.save_account_xingtu(db, sec_user_id, payload)
