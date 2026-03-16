@@ -205,7 +205,7 @@ async def update_account_xingtu_module(db: AsyncSession, sec_user_id: str, modul
         patch["kol_id"] = kol_id
     await db.execute(
         sqlalchemy.text(
-            "UPDATE accounts SET xingtu_data = COALESCE(xingtu_data, '{}'::jsonb) || :patch::jsonb, "
+            "UPDATE accounts SET xingtu_data = COALESCE(xingtu_data, '{}'::jsonb) || CAST(:patch AS jsonb), "
             "xingtu_updated_at = :ts WHERE sec_user_id = :sid"
         ),
         {"patch": _json.dumps(patch, ensure_ascii=False), "ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "sid": sec_user_id},
