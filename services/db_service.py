@@ -201,7 +201,7 @@ async def update_account_xingtu_module(db: AsyncSession, sec_user_id: str, modul
     """局部更新 xingtu_data 中某个模块（JSONB merge），不覆盖其他模块"""
     from datetime import datetime
     patch = {module_key: data}
-    if kol_id:
+    if kol_id is not None:
         patch["kol_id"] = kol_id
     await db.execute(
         sqlalchemy.text(

@@ -133,10 +133,12 @@ async def get_account_videos(
 
 
 async def _get_kol_id(sec_user_id: str, db: AsyncSession) -> str:
-    """获取星图 kolId，优先从缓存取"""
+    """获取星图 kolId，优先从缓存取（空字符串表示已查过但未加入星图）"""
     cached = await db_service.get_account_xingtu(db, sec_user_id)
-    if cached and cached.get("data", {}).get("kol_id"):
-        return cached["data"]["kol_id"]
+    if cached:
+        data = cached.get("data") or {}
+        if "kol_id" in data:  # 空字符串也算有效缓存（未加入星图）
+            return data["kol_id"]
     kol_result = await tikhub_service.fetch_xingtu_kol_id(sec_user_id)
     logger.info(f"星图 kolId 原始返回: {kol_result}")
     kol_id = ""
@@ -144,6 +146,8 @@ async def _get_kol_id(sec_user_id: str, db: AsyncSession) -> str:
         base_resp = kol_result.get("base_resp", {})
         sc = kol_result.get("status_code", base_resp.get("status_code", 0))
         if sc and sc != 0 and not kol_result.get("id"):
+            # 未加入星图，缓存空字符串，避免下次重复查询
+            await db_service.update_account_xingtu_module(db, sec_user_id, "_xingtu_checked", True, kol_id="")
             return ""
         kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "")
                      or kol_result.get("kolid", "") or kol_result.get("id", "") or "")
