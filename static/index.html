@@ -349,7 +349,7 @@
                     <button x-show="acc._synced" @click.stop="loadXingtu(acc)" :disabled="xingtuLoading"
                       class="flex items-center gap-1 text-xs text-purple-500 hover:text-purple-600 disabled:text-gray-300">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                      星图分析
+                      <span x-text="(selectedAccount?.sec_user_id === acc.sec_user_id && xingtuData) ? '刷新星图' : '星图分析'"></span>
                     </button>
                     <button @click.stop="syncAccount(acc)" :disabled="syncingId === acc.sec_user_id"
                       class="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 disabled:text-gray-300">
@@ -375,6 +375,7 @@
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                   星图分析
+                  <span x-show="xingtuData.cached_at" class="text-xs font-normal text-gray-400" x-text="xingtuData.cached_at ? '· 更新于 ' + xingtuData.cached_at : ''"></span>
                 </h3>
                 <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
               </div>
@@ -1042,6 +1043,13 @@ function app() {
       }
       this.syncingId = null;
       this.sortVideos();
+      // 自动加载缓存的星图数据
+      if (acc.sec_user_id) {
+        try {
+          const xingtu = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu');
+          if (xingtu && !xingtu.error) this.xingtuData = xingtu;
+        } catch (e) { /* 缓存加载失败不影响主流程 */ }
+      }
     },
 
     // 同步视频（后端存库）
@@ -1279,14 +1287,14 @@ function app() {
       this.favoriteRefreshing = null;
     },
 
-    // 加载星图分析数据
+    // 加载星图分析数据（refresh=true 强制重新拉取）
     async loadXingtu(acc) {
       if (this.xingtuLoading) return;
       if (!acc.sec_user_id) { this.accountError = '该账号缺少 sec_user_id'; return; }
-      this.xingtuLoading = true; this.xingtuData = null; this.accountError = '';
+      this.xingtuLoading = true; this.accountError = '';
       this.selectedAccount = acc;
       try {
-        const data = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu');
+        const data = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu?refresh=true');
         if (data.error) {
           this.accountError = '星图分析: ' + data.error;
         } else {

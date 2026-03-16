@@ -133,8 +133,14 @@ async def get_account_videos(
 
 
 @router.get("/{sec_user_id}/xingtu")
-async def get_account_xingtu(sec_user_id: str):
-    """获取账号的星图（Xingtu）分析数据"""
+async def get_account_xingtu(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
+    """获取账号的星图（Xingtu）分析数据，refresh=true 强制重新拉取"""
+    # 未强制刷新时，优先返回缓存
+    if not refresh:
+        cached = await db_service.get_account_xingtu(db, sec_user_id)
+        if cached and cached["data"]:
+            return JSONResponse(content={**cached["data"], "cached_at": cached["updated_at"]})
+
     # 第一步：获取 kolId
     kol_result = await tikhub_service.fetch_xingtu_kol_id(sec_user_id)
     logger.info(f"星图 kolId 原始返回: {kol_result}")
@@ -173,11 +179,19 @@ async def get_account_xingtu(sec_user_id: str):
         else:
             cleaned.append(r)
 
-    return JSONResponse(content={
+    payload = {
         "kol_id": kol_id,
         "fans_portrait": cleaned[0],
         "xingtu_index": cleaned[1],
         "service_price": cleaned[2],
         "cp_info": cleaned[3],
         "convert_videos": cleaned[4],
-    })
+    }
+    # 有任意有效数据时才保存
+    has_data = any([cleaned[0], cleaned[1], cleaned[2], cleaned[3], cleaned[4]])
+    if has_data:
+        try:
+            await db_service.save_account_xingtu(db, sec_user_id, payload)
+        except Exception as e:
+            logger.warning(f"保存星图数据失败: {e}")
+    return JSONResponse(content={**payload, "cached_at": ""})

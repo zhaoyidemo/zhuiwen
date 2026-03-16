@@ -195,6 +195,27 @@ async def delete_ai_prompt(db: AsyncSession, name: str) -> None:
     await db.commit()
 
 
+async def save_account_xingtu(db: AsyncSession, sec_user_id: str, xingtu_data: dict) -> None:
+    from datetime import datetime
+    await db.execute(
+        update(Account).where(Account.sec_user_id == sec_user_id).values(
+            xingtu_data=xingtu_data,
+            xingtu_updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+    )
+    await db.commit()
+
+
+async def get_account_xingtu(db: AsyncSession, sec_user_id: str) -> dict | None:
+    result = await db.execute(
+        select(Account.xingtu_data, Account.xingtu_updated_at).where(Account.sec_user_id == sec_user_id)
+    )
+    row = result.first()
+    if row and row[0]:
+        return {"data": row[0], "updated_at": row[1] or ""}
+    return None
+
+
 async def save_ai_analysis(db: AsyncSession, aweme_id: str, analysis: dict) -> None:
     await db.execute(
         update(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id).values(ai_analysis=analysis)

@@ -24,6 +24,8 @@ class Account(Base):
     category: Mapped[str] = mapped_column(String(64), default="竞品")
     last_synced_at: Mapped[str] = mapped_column(String(64), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
+    xingtu_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    xingtu_updated_at: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 

@@ -24,7 +24,8 @@ def _get_headers():
     }
 
 
-async def _request(method: str, path: str, params: dict = None, json_data: dict = None) -> dict:
+async def _request(method: str, path: str, params: dict = None, json_data: dict = None, _retries: int = 1) -> dict:
+    import asyncio
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.request(
             method,
@@ -35,6 +36,9 @@ async def _request(method: str, path: str, params: dict = None, json_data: dict 
         )
         if not resp.is_success:
             logger.warning(f"TikHub API 错误 [{resp.status_code}] {path}: {resp.text}")
+            if _retries > 0:
+                await asyncio.sleep(1)
+                return await _request(method, path, params, json_data, _retries=_retries - 1)
         resp.raise_for_status()
         return resp.json()
 
