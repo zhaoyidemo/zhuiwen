@@ -132,16 +132,11 @@ async def get_account_videos(
     return {"videos": videos, "total": len(videos)}
 
 
-@router.get("/{sec_user_id}/xingtu")
-async def get_account_xingtu(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
-    """获取账号的星图（Xingtu）分析数据，refresh=true 强制重新拉取"""
-    # 未强制刷新时，优先返回缓存
-    if not refresh:
-        cached = await db_service.get_account_xingtu(db, sec_user_id)
-        if cached and cached["data"]:
-            return JSONResponse(content={**cached["data"], "cached_at": cached["updated_at"]})
-
-    # 第一步：获取 kolId
+async def _get_kol_id(sec_user_id: str, db: AsyncSession) -> str:
+    """获取星图 kolId，优先从缓存取"""
+    cached = await db_service.get_account_xingtu(db, sec_user_id)
+    if cached and cached.get("data", {}).get("kol_id"):
+        return cached["data"]["kol_id"]
     kol_result = await tikhub_service.fetch_xingtu_kol_id(sec_user_id)
     logger.info(f"星图 kolId 原始返回: {kol_result}")
     kol_id = ""
@@ -149,47 +144,73 @@ async def get_account_xingtu(sec_user_id: str, refresh: bool = False, db: AsyncS
         base_resp = kol_result.get("base_resp", {})
         sc = kol_result.get("status_code", base_resp.get("status_code", 0))
         if sc and sc != 0 and not kol_result.get("id"):
-            msg = (kol_result.get("status_message_zh") or kol_result.get("status_message")
-                   or base_resp.get("status_message") or "未知错误")
-            return JSONResponse(content={"error": f"该账号未加入星图: {msg}", "kol_id": ""})
+            return ""
         kol_id = str(kol_result.get("kolId", "") or kol_result.get("kol_id", "")
                      or kol_result.get("kolid", "") or kol_result.get("id", "") or "")
     elif isinstance(kol_result, (str, int)) and kol_result:
         kol_id = str(kol_result)
+    return kol_id
+
+
+@router.get("/{sec_user_id}/xingtu/portrait")
+async def get_xingtu_portrait(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
+    """粉丝画像"""
+    if not refresh:
+        cached = await db_service.get_account_xingtu(db, sec_user_id)
+        if cached and cached["data"].get("fans_portrait"):
+            return JSONResponse(content={"fans_portrait": cached["data"]["fans_portrait"], "cached_at": cached["updated_at"]})
+    kol_id = await _get_kol_id(sec_user_id, db)
     if not kol_id:
-        return JSONResponse(content={"error": "无法获取该账号的星图 kolId", "kol_id": ""})
+        raise HTTPException(status_code=400, detail="该账号未加入星图或无法获取 kolId")
+    data = await tikhub_service.fetch_kol_fans_portrait(kol_id)
+    if data:
+        await db_service.update_account_xingtu_module(db, sec_user_id, "fans_portrait", data, kol_id)
+    return JSONResponse(content={"fans_portrait": data or {}, "cached_at": ""})
 
-    # 第二步：并发调用星图 API（部分失败不影响整体）
-    results = await asyncio.gather(
-        tikhub_service.fetch_kol_fans_portrait(kol_id),
-        tikhub_service.fetch_kol_xingtu_index(kol_id),
-        tikhub_service.fetch_kol_service_price(kol_id),
-        tikhub_service.fetch_kol_cp_info(kol_id),
-        return_exceptions=True,
-    )
-    # 异常结果替换为空值
-    cleaned = []
-    labels = ["fans_portrait", "xingtu_index", "service_price", "cp_info"]
-    defaults = [{}, {}, {}, {}]
-    for i, r in enumerate(results):
-        if isinstance(r, Exception):
-            logger.warning(f"星图 {labels[i]} 失败: {r}")
-            cleaned.append(defaults[i])
-        else:
-            cleaned.append(r)
 
-    payload = {
-        "kol_id": kol_id,
-        "fans_portrait": cleaned[0],
-        "xingtu_index": cleaned[1],
-        "service_price": cleaned[2],
-        "cp_info": cleaned[3],
-    }
-    # 有任意有效数据时才保存
-    has_data = any([cleaned[0], cleaned[1], cleaned[2], cleaned[3]])
-    if has_data:
-        try:
-            await db_service.save_account_xingtu(db, sec_user_id, payload)
-        except Exception as e:
-            logger.warning(f"保存星图数据失败: {e}")
-    return JSONResponse(content={**payload, "cached_at": ""})
+@router.get("/{sec_user_id}/xingtu/index")
+async def get_xingtu_index(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
+    """星图指数"""
+    if not refresh:
+        cached = await db_service.get_account_xingtu(db, sec_user_id)
+        if cached and cached["data"].get("xingtu_index"):
+            return JSONResponse(content={"xingtu_index": cached["data"]["xingtu_index"], "cached_at": cached["updated_at"]})
+    kol_id = await _get_kol_id(sec_user_id, db)
+    if not kol_id:
+        raise HTTPException(status_code=400, detail="该账号未加入星图或无法获取 kolId")
+    data = await tikhub_service.fetch_kol_xingtu_index(kol_id)
+    if data:
+        await db_service.update_account_xingtu_module(db, sec_user_id, "xingtu_index", data, kol_id)
+    return JSONResponse(content={"xingtu_index": data or {}, "cached_at": ""})
+
+
+@router.get("/{sec_user_id}/xingtu/cp")
+async def get_xingtu_cp(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
+    """性价比分析"""
+    if not refresh:
+        cached = await db_service.get_account_xingtu(db, sec_user_id)
+        if cached and cached["data"].get("cp_info"):
+            return JSONResponse(content={"cp_info": cached["data"]["cp_info"], "cached_at": cached["updated_at"]})
+    kol_id = await _get_kol_id(sec_user_id, db)
+    if not kol_id:
+        raise HTTPException(status_code=400, detail="该账号未加入星图或无法获取 kolId")
+    data = await tikhub_service.fetch_kol_cp_info(kol_id)
+    if data:
+        await db_service.update_account_xingtu_module(db, sec_user_id, "cp_info", data, kol_id)
+    return JSONResponse(content={"cp_info": data or {}, "cached_at": ""})
+
+
+@router.get("/{sec_user_id}/xingtu/price")
+async def get_xingtu_price(sec_user_id: str, refresh: bool = False, db: AsyncSession = Depends(get_db)):
+    """商单报价"""
+    if not refresh:
+        cached = await db_service.get_account_xingtu(db, sec_user_id)
+        if cached and cached["data"].get("service_price"):
+            return JSONResponse(content={"service_price": cached["data"]["service_price"], "cached_at": cached["updated_at"]})
+    kol_id = await _get_kol_id(sec_user_id, db)
+    if not kol_id:
+        raise HTTPException(status_code=400, detail="该账号未加入星图或无法获取 kolId")
+    data = await tikhub_service.fetch_kol_service_price(kol_id)
+    if data:
+        await db_service.update_account_xingtu_module(db, sec_user_id, "service_price", data, kol_id)
+    return JSONResponse(content={"service_price": data or {}, "cached_at": ""})

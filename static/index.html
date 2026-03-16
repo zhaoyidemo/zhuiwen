@@ -346,7 +346,7 @@
                     :class="acc.category==='竞品' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'"
                     x-text="acc.category + (acc._synced ? ' · ' + acc._synced + '条' : '') + (acc._lastSync ? ' · ' + acc._lastSync : '')"></span>
                   <div class="flex items-center gap-2">
-                    <button x-show="acc._synced" @click.stop="loadXingtu(acc)" :disabled="xingtuLoading"
+                    <button x-show="acc._synced" @click.stop="loadXingtu(acc, true)" :disabled="xingtuLoading"
                       class="flex items-center gap-1 text-xs text-purple-500 hover:text-purple-600 disabled:text-gray-300">
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                       <span x-text="(selectedAccount?.sec_user_id === acc.sec_user_id && xingtuData) ? '刷新星图' : '星图分析'"></span>
@@ -369,7 +369,7 @@
           </div>
 
           <!-- 星图分析数据展示 -->
-          <template x-if="xingtuData && !xingtuLoading">
+          <template x-if="xingtuData !== null || Object.values(xingtuModuleState).some(m => m.loading || m.failed)">
             <div class="mb-6 space-y-4">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -381,8 +381,21 @@
               </div>
 
               <!-- 星图指数卡片（只过滤系统字段，其余全显示） -->
-              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.xingtu_index || !xingtuCleanKeys(xingtuData.xingtu_index).length">
-                <span class="text-base">⚠</span> 星图指数 · 数据暂不可用
+              <div class="rounded-2xl border border-dashed p-4 flex items-center justify-between"
+                :class="xingtuModuleState.index.failed ? 'bg-gray-50 border-gray-200' : 'bg-blue-50/40 border-blue-100'"
+                x-show="!xingtuData?.xingtu_index || !xingtuCleanKeys(xingtuData.xingtu_index || {}).length">
+                <div class="flex items-center gap-2 text-sm">
+                  <template x-if="xingtuModuleState.index.loading">
+                    <svg class="animate-spin w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span class="text-blue-400">星图指数加载中...</span>
+                  </template>
+                  <template x-if="!xingtuModuleState.index.loading">
+                    <span class="text-gray-400">⚠ 星图指数 · 数据暂不可用</span>
+                  </template>
+                </div>
+                <button x-show="!xingtuModuleState.index.loading && xingtuModuleState.index.failed"
+                  @click="loadXingtuModule(selectedAccount, 'index', true)"
+                  class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
@@ -404,8 +417,21 @@
               </div>
 
               <!-- 性价比分析卡片 -->
-              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.cp_info || !xingtuCleanKeys(xingtuData.cp_info).length">
-                <span class="text-base">⚠</span> 性价比分析 · 数据暂不可用
+              <div class="rounded-2xl border border-dashed p-4 flex items-center justify-between"
+                :class="xingtuModuleState.cp.failed ? 'bg-gray-50 border-gray-200' : 'bg-blue-50/40 border-blue-100'"
+                x-show="!xingtuData?.cp_info || !xingtuCleanKeys(xingtuData.cp_info || {}).length">
+                <div class="flex items-center gap-2 text-sm">
+                  <template x-if="xingtuModuleState.cp.loading">
+                    <svg class="animate-spin w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span class="text-blue-400">性价比分析加载中...</span>
+                  </template>
+                  <template x-if="!xingtuModuleState.cp.loading">
+                    <span class="text-gray-400">⚠ 性价比分析 · 数据暂不可用</span>
+                  </template>
+                </div>
+                <button x-show="!xingtuModuleState.cp.loading && xingtuModuleState.cp.failed"
+                  @click="loadXingtuModule(selectedAccount, 'cp', true)"
+                  class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
@@ -480,8 +506,21 @@
               </div>
 
               <!-- 粉丝画像（精简：只用描述文字 + top3 条形图） -->
-              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.fans_portrait?.distributions?.length">
-                <span class="text-base">⚠</span> 粉丝画像 · 数据暂不可用
+              <div class="rounded-2xl border border-dashed p-4 flex items-center justify-between"
+                :class="xingtuModuleState.portrait.failed ? 'bg-gray-50 border-gray-200' : 'bg-blue-50/40 border-blue-100'"
+                x-show="!xingtuData?.fans_portrait?.distributions?.length">
+                <div class="flex items-center gap-2 text-sm">
+                  <template x-if="xingtuModuleState.portrait.loading">
+                    <svg class="animate-spin w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span class="text-blue-400">粉丝画像加载中...</span>
+                  </template>
+                  <template x-if="!xingtuModuleState.portrait.loading">
+                    <span class="text-gray-400">⚠ 粉丝画像 · 数据暂不可用</span>
+                  </template>
+                </div>
+                <button x-show="!xingtuModuleState.portrait.loading && xingtuModuleState.portrait.failed"
+                  @click="loadXingtuModule(selectedAccount, 'portrait', true)"
+                  class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait?.distributions?.length">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">粉丝画像</h4>
@@ -496,8 +535,21 @@
               </div>
 
               <!-- 商单报价卡片 -->
-              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.service_price || !Object.keys(xingtuData.service_price).length">
-                <span class="text-base">⚠</span> 商单报价 · 数据暂不可用
+              <div class="rounded-2xl border border-dashed p-4 flex items-center justify-between"
+                :class="xingtuModuleState.price.failed ? 'bg-gray-50 border-gray-200' : 'bg-blue-50/40 border-blue-100'"
+                x-show="!xingtuData?.service_price || !Object.keys(xingtuData.service_price || {}).length">
+                <div class="flex items-center gap-2 text-sm">
+                  <template x-if="xingtuModuleState.price.loading">
+                    <svg class="animate-spin w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                    <span class="text-blue-400">商单报价加载中...</span>
+                  </template>
+                  <template x-if="!xingtuModuleState.price.loading">
+                    <span class="text-gray-400">⚠ 商单报价 · 数据暂不可用</span>
+                  </template>
+                </div>
+                <button x-show="!xingtuModuleState.price.loading && xingtuModuleState.price.failed"
+                  @click="loadXingtuModule(selectedAccount, 'price', true)"
+                  class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 0">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
@@ -872,6 +924,12 @@ function app() {
     fillProgress: '',
     xingtuData: null,
     xingtuLoading: false,
+    xingtuModuleState: {
+      index:    { loading: false, failed: false, cached_at: '' },
+      cp:       { loading: false, failed: false, cached_at: '' },
+      portrait: { loading: false, failed: false, cached_at: '' },
+      price:    { loading: false, failed: false, cached_at: '' },
+    },
 
     // 爆款收藏
     favoriteVideos: [],
@@ -1039,13 +1097,8 @@ function app() {
       }
       this.syncingId = null;
       this.sortVideos();
-      // 自动加载缓存的星图数据
-      if (acc.sec_user_id) {
-        try {
-          const xingtu = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu');
-          if (xingtu && !xingtu.error) this.xingtuData = xingtu;
-        } catch (e) { /* 缓存加载失败不影响主流程 */ }
-      }
+      // 自动加载缓存的星图数据（独立并发，不阻塞）
+      if (acc.sec_user_id) this.loadXingtu(acc, false);
     },
 
     // 同步视频（后端存库）
@@ -1283,21 +1336,37 @@ function app() {
       this.favoriteRefreshing = null;
     },
 
-    // 加载星图分析数据（refresh=true 强制重新拉取）
-    async loadXingtu(acc) {
-      if (this.xingtuLoading) return;
-      if (!acc.sec_user_id) { this.accountError = '该账号缺少 sec_user_id'; return; }
-      this.xingtuLoading = true; this.accountError = '';
-      this.selectedAccount = acc;
+    // 加载单个星图模块
+    async loadXingtuModule(acc, module, refresh = false) {
+      if (!acc?.sec_user_id) return;
+      const keyMap = { index: 'xingtu_index', cp: 'cp_info', portrait: 'fans_portrait', price: 'service_price' };
+      const state = this.xingtuModuleState[module];
+      state.loading = true; state.failed = false;
+      this.xingtuLoading = true;
       try {
-        const data = await this.api('GET', '/account/' + acc.sec_user_id + '/xingtu?refresh=true');
-        if (data.error) {
-          this.accountError = '星图分析: ' + data.error;
-        } else {
-          this.xingtuData = data;
-        }
-      } catch (e) { this.accountError = '星图分析加载失败: ' + e.message; }
-      this.xingtuLoading = false;
+        const res = await this.api('GET', `/account/${acc.sec_user_id}/xingtu/${module}?refresh=${refresh}`);
+        const dataKey = keyMap[module];
+        if (!this.xingtuData) this.xingtuData = {};
+        this.xingtuData = { ...this.xingtuData, [dataKey]: res[dataKey] };
+        state.cached_at = res.cached_at || '';
+        const d = res[dataKey];
+        state.failed = !d || (typeof d === 'object' && !Array.isArray(d) && !Object.keys(d).length);
+      } catch (e) {
+        state.failed = true;
+      }
+      state.loading = false;
+      this.xingtuLoading = Object.values(this.xingtuModuleState).some(m => m.loading);
+    },
+
+    // 加载全部星图模块（并发）
+    async loadXingtu(acc, refresh = false) {
+      if (!acc?.sec_user_id) { this.accountError = '该账号缺少 sec_user_id'; return; }
+      this.selectedAccount = acc; this.accountError = '';
+      this.xingtuData = null;
+      ['index', 'cp', 'portrait', 'price'].forEach(m => {
+        this.xingtuModuleState[m] = { loading: false, failed: false, cached_at: '' };
+      });
+      ['index', 'cp', 'portrait', 'price'].forEach(m => this.loadXingtuModule(acc, m, refresh));
     },
 
     // 星图字段中文标签映射

@@ -1,3 +1,5 @@
+import json as _json
+import sqlalchemy
 from sqlalchemy import select, delete, update, func, case
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -192,6 +194,22 @@ async def upsert_ai_prompt(db: AsyncSession, name: str, content: str) -> dict:
 
 async def delete_ai_prompt(db: AsyncSession, name: str) -> None:
     await db.execute(delete(AiPrompt).where(AiPrompt.name == name))
+    await db.commit()
+
+
+async def update_account_xingtu_module(db: AsyncSession, sec_user_id: str, module_key: str, data: dict, kol_id: str = "") -> None:
+    """局部更新 xingtu_data 中某个模块（JSONB merge），不覆盖其他模块"""
+    from datetime import datetime
+    patch = {module_key: data}
+    if kol_id:
+        patch["kol_id"] = kol_id
+    await db.execute(
+        sqlalchemy.text(
+            "UPDATE accounts SET xingtu_data = COALESCE(xingtu_data, '{}'::jsonb) || :patch::jsonb, "
+            "xingtu_updated_at = :ts WHERE sec_user_id = :sid"
+        ),
+        {"patch": _json.dumps(patch, ensure_ascii=False), "ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "sid": sec_user_id},
+    )
     await db.commit()
 
 
