@@ -381,6 +381,9 @@
               </div>
 
               <!-- 星图指数卡片（只过滤系统字段，其余全显示） -->
+              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.xingtu_index || !xingtuCleanKeys(xingtuData.xingtu_index).length">
+                <span class="text-base">⚠</span> 星图指数 · 数据暂不可用
+              </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -401,6 +404,9 @@
               </div>
 
               <!-- 性价比分析卡片 -->
+              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.cp_info || !xingtuCleanKeys(xingtuData.cp_info).length">
+                <span class="text-base">⚠</span> 性价比分析 · 数据暂不可用
+              </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
                 <!-- 预估播放量 -->
@@ -474,6 +480,9 @@
               </div>
 
               <!-- 粉丝画像（精简：只用描述文字 + top3 条形图） -->
+              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.fans_portrait?.distributions?.length">
+                <span class="text-base">⚠</span> 粉丝画像 · 数据暂不可用
+              </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.fans_portrait?.distributions?.length">
                 <h4 class="text-base font-semibold text-gray-800 mb-3">粉丝画像</h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -487,6 +496,9 @@
               </div>
 
               <!-- 商单报价卡片 -->
+              <div class="bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-4 flex items-center gap-2 text-sm text-gray-400" x-show="!xingtuData.service_price || !Object.keys(xingtuData.service_price).length">
+                <span class="text-base">⚠</span> 商单报价 · 数据暂不可用
+              </div>
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 0">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">商单报价</h4>
                 <template x-for="channel in Object.keys(xingtuData.service_price).filter(c => c === '视频')" :key="channel">
@@ -498,7 +510,7 @@
                         <template x-for="(p, idx) in xingtuData.service_price[channel].price_info" :key="idx">
                           <div class="flex items-center justify-between py-3 px-4 bg-amber-50 rounded-lg">
                             <span class="text-sm text-gray-700" x-text="p.desc || p.name || p.type_name || p.price_type_name || ('报价' + (idx+1))"></span>
-                            <span class="text-lg font-bold text-amber-600 tabular-nums" x-text="'¥' + fmtNum(p.price || p.amount || p.value || 0)"></span>
+                            <span class="text-lg font-bold text-amber-600 tabular-nums" x-text="(p.price || p.quote_price || p.amount || p.value) ? '¥' + fmtNum(p.price || p.quote_price || p.amount || p.value) : '-'"></span>
                           </div>
                         </template>
                       </div>
@@ -1447,7 +1459,7 @@ function app() {
         'favoriting_count': '喜欢数', 'follow_status': '关注状态',
         'verification_type': '认证类型',
       };
-      return L[key] || key.replace(/_/g, ' ');
+      return L[key] || '';
     },
 
     // 星图评论热词相关方法
