@@ -92,7 +92,7 @@ async def analyze_single_video(
     if not settings.ANTHROPIC_API_KEY:
         return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
 
-    system_prompt = prompt or DEFAULT_PROMPTS["爆款分析"]
+    system_prompt = prompt or DEFAULT_PROMPTS.get("AI洞察", list(DEFAULT_PROMPTS.values())[0])
     video_text = _format_video_for_prompt(video)
     comments_text = _format_comments_for_prompt(comments or [])
 

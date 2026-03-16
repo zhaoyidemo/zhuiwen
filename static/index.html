@@ -717,21 +717,21 @@
                       </button>
                       <button @click="runAiAnalysis(v, idx)"
                         class="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-all"
-                        :class="v._aiLoading ? 'opacity-50 cursor-wait' : ''">
-                        <svg x-show="v._aiLoading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <svg x-show="!v._aiLoading" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                        <span x-text="v._aiLoading ? '分析中...' : 'AI 洞察'"></span>
+                        :class="aiAnalyzingId === v.aweme_id ? 'opacity-50 cursor-wait' : ''">
+                        <svg x-show="aiAnalyzingId === v.aweme_id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        <svg x-show="aiAnalyzingId !== v.aweme_id" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                        <span x-text="aiAnalyzingId === v.aweme_id ? 'Claude Opus 分析中（约30秒）...' : (v.ai_analysis?.result ? '重新分析' : 'AI 洞察')"></span>
                       </button>
                     </div>
 
                     <!-- AI 分析结果 -->
-                    <div x-show="v._aiResult || v.ai_analysis?.result" class="mt-4 pt-4 border-t border-purple-100">
+                    <div x-show="v.ai_analysis?.result" class="mt-4 pt-4 border-t border-purple-100">
                       <div class="flex items-center justify-between mb-3">
                         <h5 class="text-sm font-semibold text-purple-700">AI 洞察</h5>
-                        <span class="text-[10px] text-gray-400" x-text="v._aiResult?.created_at || v.ai_analysis?.created_at || ''"></span>
+                        <span class="text-[10px] text-gray-400" x-text="v.ai_analysis?.created_at || ''"></span>
                       </div>
                       <div class="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed"
-                        x-html="renderMarkdown(v._aiResult?.result || v.ai_analysis?.result || '')"></div>
+                        x-html="renderMarkdown(v.ai_analysis?.result || '')"></div>
                     </div>
 
                     <!-- 评论（评论热词） -->
@@ -854,6 +854,7 @@ function app() {
     favoriteVideos: [],
     favoriteRefreshing: null,
     aiPrompts: [],
+    aiAnalyzingId: null,
     newPromptName: '',
     newPromptContent: '',
 
@@ -1110,36 +1111,55 @@ function app() {
       } catch (e) { /* ignore */ }
     },
     async runAiAnalysis(v, idx) {
-      if (v._aiLoading) return;
-      v._aiLoading = true;
+      if (this.aiAnalyzingId) return;
+      this.aiAnalyzingId = v.aweme_id;
       try {
-        // 从已加载的提示词中查找「AI洞察」，没有则用默认
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const aiPrompt = this.aiPrompts.find(p => p.name === 'AI洞察');
         const res = await this.api('POST', '/favorite/' + v.aweme_id + '/analyze', {
           prompt: aiPrompt?.content || '',
           video_data: v,
         });
-        v._aiResult = res;
-        v.ai_analysis = res;
+        this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], ai_analysis: res };
       } catch (e) {
-        v._aiResult = { result: '分析失败: ' + e.message, created_at: '' };
+        this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], ai_analysis: { result: '分析失败: ' + e.message, created_at: '' } };
       }
-      v._aiLoading = false;
+      this.aiAnalyzingId = null;
     },
     renderMarkdown(text) {
       if (!text) return '';
-      return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-gray-800 mt-4 mb-2">$1</h3>')
-        .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-gray-800 mt-5 mb-2">$1</h2>')
-        .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-gray-800 mt-6 mb-3">$1</h1>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-        .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>')
-        .replace(/\n{2,}/g, '<br><br>')
-        .replace(/\n/g, '<br>');
+      // 先提取代码块保护起来
+      const codeBlocks = [];
+      text = text.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
+        codeBlocks.push(`<pre class="bg-gray-100 rounded-lg p-3 text-xs overflow-x-auto my-2"><code>${code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`);
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+      });
+      // 转义 HTML
+      text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // 标题
+      text = text.replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-gray-800 mt-4 mb-2">$1</h3>');
+      text = text.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-gray-800 mt-5 mb-2">$1</h2>');
+      text = text.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-gray-800 mt-6 mb-3">$1</h1>');
+      // 加粗/斜体
+      text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      // 表格
+      text = text.replace(/^\|(.+)\|$/gm, (m, row) => {
+        const cells = row.split('|').map(c => c.trim());
+        if (cells.every(c => /^[-:]+$/.test(c))) return '';
+        const tag = 'td';
+        return '<tr>' + cells.map(c => `<${tag} class="border border-gray-200 px-3 py-1.5 text-xs">${c}</${tag}>`).join('') + '</tr>';
+      });
+      text = text.replace(/(<tr>[\s\S]*?<\/tr>)/g, '<table class="w-full border-collapse my-3">$1</table>');
+      // 列表
+      text = text.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>');
+      text = text.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>');
+      // 换行
+      text = text.replace(/\n{2,}/g, '<br><br>');
+      text = text.replace(/\n/g, '<br>');
+      // 还原代码块
+      codeBlocks.forEach((block, i) => { text = text.replace(`__CODE_BLOCK_${i}__`, block); });
+      return text;
     },
 
     async loadFavExtended(v, idx) {
