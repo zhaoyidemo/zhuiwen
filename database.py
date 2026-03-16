@@ -31,7 +31,14 @@ class Base(DeclarativeBase):
     pass
 
 
-async_engine = create_async_engine(DATABASE_URL, echo=False) if DATABASE_URL else None
+async_engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_recycle=300,       # 每5分钟回收空闲连接
+    pool_pre_ping=True,     # 每次使用前检测连接是否存活
+    pool_size=5,
+    max_overflow=10,
+) if DATABASE_URL else None
 async_session = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False) if async_engine else None
 
 
