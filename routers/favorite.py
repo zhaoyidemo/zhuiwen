@@ -116,17 +116,31 @@ async def analyze_first5s(aweme_id: str, body: dict, db: AsyncSession = Depends(
     if not video_url:
         raise HTTPException(status_code=400, detail="该视频没有可用的视频链接")
 
-    # 服务端截帧
+    # 第一次尝试截帧（使用收藏时保存的 URL）
+    logger.info(f"前5秒分析开始: aweme_id={aweme_id}")
     frames = await video_processor.extract_first_frames(video_url, seconds=5, fps=1)
+
+    # 如果失败，尝试从 TikHub 获取最新视频链接（CDN URL 可能已过期）
     if not frames:
-        raise HTTPException(status_code=500, detail="截帧失败，请稍后重试")
+        logger.warning(f"首次截帧失败，尝试刷新视频链接: aweme_id={aweme_id}")
+        try:
+            fresh_video = await tikhub_service.fetch_video_by_id(aweme_id)
+            fresh_url = fresh_video.video_url if fresh_video else ""
+            if fresh_url and fresh_url != video_url:
+                logger.info(f"获取到新视频链接，重试截帧")
+                frames = await video_processor.extract_first_frames(fresh_url, seconds=5, fps=1)
+        except Exception as e:
+            logger.warning(f"刷新视频链接失败: {e}")
+
+    if not frames:
+        raise HTTPException(status_code=500, detail="截帧失败：视频链接可能已过期，请先刷新视频数据后重试")
 
     logger.info(f"前5秒截帧完成: {len(frames)} 帧, aweme_id={aweme_id}")
 
     # Claude Vision 分析
     analysis = await ai_service.analyze_first_5s(video=video_data, frame_data_uris=frames)
 
-    # 保存分析结果
+    # 保存分析结果（不含 frames base64，太大）
     try:
         await db_service.save_ai_analysis(db, aweme_id, analysis, analysis_type="first5s")
     except Exception as e:
