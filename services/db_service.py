@@ -68,14 +68,18 @@ async def upsert_videos_batch(db: AsyncSession, sec_user_id: str, videos: list[d
     keep_fields = {"play_count", "collect_rate", "engagement_rate"}
     for v in videos:
         v["account_sec_user_id"] = sec_user_id
-    stmt = insert(Video).values(videos)
-    update_cols = {
-        k: stmt.excluded[k]
-        for k in videos[0]
-        if k != "aweme_id" and k not in keep_fields
-    }
-    stmt = stmt.on_conflict_do_update(index_elements=["aweme_id"], set_=update_cols)
-    await db.execute(stmt)
+    # 分批插入，避免参数过多超出 asyncpg 限制（每条 ~25 字段，100条 = 2500 参数）
+    BATCH_SIZE = 100
+    for i in range(0, len(videos), BATCH_SIZE):
+        batch = videos[i:i + BATCH_SIZE]
+        stmt = insert(Video).values(batch)
+        update_cols = {
+            k: stmt.excluded[k]
+            for k in batch[0]
+            if k != "aweme_id" and k not in keep_fields
+        }
+        stmt = stmt.on_conflict_do_update(index_elements=["aweme_id"], set_=update_cols)
+        await db.execute(stmt)
     await db.commit()
 
 
