@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,11 +64,11 @@ async def remove_account(sec_user_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{sec_user_id}/sync")
-async def sync_account_videos(sec_user_id: str, db: AsyncSession = Depends(get_db)):
-    """同步账号信息 + 所有视频数据"""
+async def sync_account_videos(sec_user_id: str, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    """同步账号信息 + 所有视频数据（后台执行，快速返回）"""
     account_update = None
 
-    # 第一步：刷新账号信息（粉丝数等）
+    # 第一步：刷新账号信息（同步执行，很快）
     try:
         existing = await db_service.get_account_by_sec_user_id(db, sec_user_id)
         if existing and existing.get("unique_id"):
@@ -83,34 +83,30 @@ async def sync_account_videos(sec_user_id: str, db: AsyncSession = Depends(get_d
     except Exception as e:
         logger.warning(f"刷新账号信息失败（不影响视频同步）: {e}")
 
-    # 第二步：拉取视频列表
-    try:
-        videos = await tikhub_service.fetch_all_user_videos(sec_user_id)
-    except Exception as e:
-        logger.error(f"拉取视频失败: {e}")
-        raise HTTPException(status_code=400, detail=f"拉取视频失败: {str(e)}")
+    # 第二步：视频同步放入后台任务，快速返回避免 524 超时
+    async def _bg_sync():
+        from database import async_session
+        try:
+            videos = await tikhub_service.fetch_all_user_videos(sec_user_id)
+            videos_data = jsonable_encoder(videos)
+            async with async_session() as bg_db:
+                await db_service.upsert_videos_batch(bg_db, sec_user_id, videos_data)
+            logger.info(f"同步完成: {len(videos_data)} 条视频, 第一条: {videos_data[0].get('desc', '')[:30] if videos_data else 'N/A'}")
+            try:
+                if videos:
+                    await feishu_service.save_videos_batch(videos)
+            except Exception as e:
+                logger.warning(f"批量写入飞书失败: {e}")
+        except Exception as e:
+            logger.error(f"后台视频同步失败: {e}")
 
-    videos_data = jsonable_encoder(videos)
-
-    # 存入数据库
-    try:
-        await db_service.upsert_videos_batch(db, sec_user_id, videos_data)
-    except Exception as e:
-        logger.warning(f"写入数据库失败: {e}")
-
-    # 飞书备份（可选）
-    try:
-        if videos:
-            await feishu_service.save_videos_batch(videos)
-    except Exception as e:
-        logger.warning(f"批量写入飞书失败: {e}")
-
-    logger.info(f"同步完成: {len(videos_data)} 条视频, 第一条: {videos_data[0].get('desc', '')[:30] if videos_data else 'N/A'}")
+    import asyncio
+    asyncio.create_task(_bg_sync())
 
     return JSONResponse(content={
-        "message": f"同步完成，共 {len(videos_data)} 条视频",
-        "total": len(videos_data),
-        "videos": videos_data,
+        "message": "同步已开始，视频数据将在后台更新",
+        "total": 0,
+        "videos": [],
         "account": account_update,
     })
 

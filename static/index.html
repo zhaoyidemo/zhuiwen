@@ -436,12 +436,12 @@
               <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData?.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
                 <!-- 预估播放量 -->
-                <div class="mb-4 flex items-center gap-2" x-show="xingtuData.cp_info.expect_vv">
+                <div class="mb-4 flex items-center gap-2" x-show="xingtuData?.cp_info?.expect_vv">
                   <span class="text-sm text-gray-500">预估播放量：</span>
-                  <span class="text-xl font-bold text-indigo-600 tabular-nums" x-text="fmtNum(xingtuData.cp_info.expect_vv)"></span>
+                  <span class="text-xl font-bold text-indigo-600 tabular-nums" x-text="fmtNum(xingtuData?.cp_info?.expect_vv)"></span>
                 </div>
                 <!-- CPE/CPM 定价表格 -->
-                <div class="overflow-x-auto mb-4" x-show="xingtuData.cp_info.expect_cpe || xingtuData.cp_info.expect_cpm">
+                <div class="overflow-x-auto mb-4" x-show="xingtuData?.cp_info?.expect_cpe || xingtuData?.cp_info?.expect_cpm">
                   <table class="w-full text-sm">
                     <thead>
                       <tr class="bg-indigo-50">
@@ -453,39 +453,39 @@
                     <tbody>
                       <tr class="border-b border-gray-100">
                         <td class="py-3 px-4 text-gray-700 font-medium">1-20秒</td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_1_20)) : '-'"></td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_1_20)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_1_20)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_1_20)) : '-'"></td>
                       </tr>
                       <tr class="border-b border-gray-100">
                         <td class="py-3 px-4 text-gray-700 font-medium">21-60秒</td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_21_60)) : '-'"></td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_21_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_21_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_21_60)) : '-'"></td>
                       </tr>
                       <tr>
                         <td class="py-3 px-4 text-gray-700 font-medium">60秒+</td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_60)) : '-'"></td>
-                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData.cp_info.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpe ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpe.cpe_60)) : '-'"></td>
+                        <td class="py-3 px-4 text-right tabular-nums text-indigo-600 font-semibold" x-text="xingtuData?.cp_info?.expect_cpm ? ('¥' + fmtNum(xingtuData.cp_info.expect_cpm.cpm_60)) : '-'"></td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
                 <!-- 带货预估CPM -->
-                <div class="overflow-x-auto mb-4" x-show="xingtuData.cp_info.sales_expect_cpm">
+                <div class="overflow-x-auto mb-4" x-show="xingtuData?.cp_info?.sales_expect_cpm">
                   <h5 class="text-sm font-semibold text-gray-700 mb-2">带货预估CPM</h5>
                   <div class="grid grid-cols-3 gap-2">
-                    <template x-for="k in Object.keys(xingtuData.cp_info.sales_expect_cpm || {})" :key="k">
+                    <template x-for="k in Object.keys(xingtuData?.cp_info?.sales_expect_cpm || {})" :key="k">
                       <div class="text-center p-2 bg-indigo-50 rounded-lg">
-                        <p class="text-sm font-bold text-indigo-600 tabular-nums" x-text="'¥' + fmtNum(xingtuData.cp_info.sales_expect_cpm[k])"></p>
+                        <p class="text-sm font-bold text-indigo-600 tabular-nums" x-text="'¥' + fmtNum(xingtuData?.cp_info?.sales_expect_cpm?.[k])"></p>
                         <p class="text-[10px] text-gray-500" x-text="xingtuLabel(k)"></p>
                       </div>
                     </template>
                   </div>
                 </div>
                 <!-- 热门视频 -->
-                <div x-show="xingtuData.cp_info.hot_item && Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
+                <div x-show="xingtuData?.cp_info?.hot_item && Array.isArray(xingtuData.cp_info.hot_item) && xingtuData.cp_info.hot_item.length > 0">
                   <h5 class="text-sm font-semibold text-gray-700 mb-2">热门视频</h5>
                   <div class="space-y-2">
-                    <template x-for="(item, idx) in (Array.isArray(xingtuData.cp_info.hot_item) ? xingtuData.cp_info.hot_item.slice(0, 3) : [])" :key="idx">
+                    <template x-for="(item, idx) in (Array.isArray(xingtuData?.cp_info?.hot_item) ? xingtuData.cp_info.hot_item.slice(0, 3) : [])" :key="idx">
                       <div class="flex items-center gap-3 py-2 px-3 bg-indigo-50/50 rounded-lg">
                         <span class="text-xs text-indigo-400 font-bold w-5 shrink-0" x-text="'#' + (idx + 1)"></span>
                         <span class="text-sm text-gray-700 truncate flex-1" x-text="item.title || item.desc || item.name || (typeof item === 'string' ? item : JSON.stringify(item))"></span>
@@ -1120,17 +1120,26 @@ function app() {
       this.syncingId = acc.sec_user_id; this.accountError = '';
       try {
         const result = await this.api('POST', '/account/' + acc.sec_user_id + '/sync');
-        // 更新账号信息（粉丝数等）
-        if (result.account) {
-          Object.assign(acc, result.account);
+        if (result.account) Object.assign(acc, result.account);
+        // 后台同步中，轮询等待视频数据就绪
+        this.accountError = '视频同步中，请稍候...';
+        const prevCount = this.competitorVideos.length;
+        for (let i = 0; i < 60; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          const dbVideos = await this.api('GET', '/account/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
+          const newCount = (dbVideos.videos || []).length;
+          this.accountError = `视频同步中... ${newCount} 条`;
+          if (newCount > prevCount || (i > 5 && newCount > 0)) {
+            this.competitorVideos = dbVideos.videos || [];
+            break;
+          }
+          if (i === 59) this.competitorVideos = dbVideos.videos || [];
         }
-        // 从数据库加载视频（保留已有的播放量和比率）
-        const dbVideos = await this.api('GET', '/account/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
-        this.competitorVideos = dbVideos.videos || [];
         this.selectedAccount = acc;
         acc._lastSync = new Date().toLocaleString('zh-CN');
         this.updateAccountStats(acc);
         this.sortVideos();
+        this.accountError = '';
       } catch (e) { this.accountError = e.message; }
       this.syncingId = null;
     },
