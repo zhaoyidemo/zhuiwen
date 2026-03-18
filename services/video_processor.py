@@ -5,13 +5,13 @@ import logging
 import os
 import tempfile
 
-import imageio_ffmpeg
+import static_ffmpeg
 
 logger = logging.getLogger(__name__)
 
-# 使用 imageio-ffmpeg 自带的 ffmpeg 二进制文件
-FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
-logger.info(f"ffmpeg 路径: {FFMPEG_PATH}")
+# 下载并注册静态 ffmpeg 二进制文件（首次调用时下载，后续使用缓存）
+static_ffmpeg.add_paths()
+logger.info("static-ffmpeg 已注册到 PATH")
 
 
 async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -> list[str]:
@@ -31,15 +31,15 @@ async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -
     max_frames = seconds * fps + 1
 
     cmd = [
-        FFMPEG_PATH,
-        "-y",                       # 覆盖已有文件
+        "ffmpeg",
+        "-y",
         "-loglevel", "warning",
-        "-i", video_url,            # 输入
-        "-t", str(seconds),         # 只取前 N 秒
-        "-vf", f"fps={fps}",        # 每秒截取帧数
+        "-i", video_url,
+        "-t", str(seconds),
+        "-vf", f"fps={fps}",
         "-frames:v", str(max_frames),
-        "-q:v", "3",                # JPEG 质量（2=最佳, 31=最差）
-        pattern,                    # 输出
+        "-q:v", "3",
+        pattern,
     ]
 
     logger.info(f"截帧开始: seconds={seconds}, fps={fps}, max_frames={max_frames}")
@@ -79,7 +79,6 @@ async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -
         logger.error(f"截帧异常: {type(e).__name__}: {e}")
         return []
     finally:
-        # 清理临时文件
         try:
             for f in os.listdir(tmpdir):
                 os.remove(os.path.join(tmpdir, f))
