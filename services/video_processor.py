@@ -5,26 +5,12 @@ import logging
 import os
 import tempfile
 
-import static_ffmpeg
-
 logger = logging.getLogger(__name__)
-
-# 下载并注册静态 ffmpeg 二进制文件（首次调用时下载，后续使用缓存）
-static_ffmpeg.add_paths()
-logger.info("static-ffmpeg 已注册到 PATH")
 
 
 async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -> list[str]:
     """
     用 ffmpeg 截取视频前 N 秒的帧，返回 base64 JPEG 列表。
-
-    Args:
-        video_url: 视频直链（抖音 CDN）
-        seconds: 截取秒数，默认 5
-        fps: 每秒截取帧数，默认 1
-
-    Returns:
-        base64 编码的 JPEG 图片列表（data URI 格式）
     """
     tmpdir = tempfile.mkdtemp(prefix="zhuiwen_frames_")
     pattern = os.path.join(tmpdir, "frame_%02d.jpg")
@@ -74,6 +60,9 @@ async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -
 
     except asyncio.TimeoutError:
         logger.error("ffmpeg 截帧超时（60秒）")
+        return []
+    except FileNotFoundError:
+        logger.error("ffmpeg 未安装")
         return []
     except Exception as e:
         logger.error(f"截帧异常: {type(e).__name__}: {e}")
