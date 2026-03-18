@@ -5,7 +5,13 @@ import logging
 import os
 import tempfile
 
+import imageio_ffmpeg
+
 logger = logging.getLogger(__name__)
+
+# 使用 imageio-ffmpeg 自带的 ffmpeg 二进制文件
+FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
+logger.info(f"ffmpeg 路径: {FFMPEG_PATH}")
 
 
 async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -> list[str]:
@@ -25,7 +31,7 @@ async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -
     max_frames = seconds * fps + 1
 
     cmd = [
-        "ffmpeg",
+        FFMPEG_PATH,
         "-y",                       # 覆盖已有文件
         "-loglevel", "warning",
         "-i", video_url,            # 输入
@@ -69,11 +75,8 @@ async def extract_first_frames(video_url: str, seconds: int = 5, fps: int = 1) -
     except asyncio.TimeoutError:
         logger.error("ffmpeg 截帧超时（60秒）")
         return []
-    except FileNotFoundError:
-        logger.error("ffmpeg 未安装，请确认 nixpacks.toml 配置了 aptPkgs = [\"ffmpeg\"]")
-        return []
     except Exception as e:
-        logger.error(f"截帧异常: {e}")
+        logger.error(f"截帧异常: {type(e).__name__}: {e}")
         return []
     finally:
         # 清理临时文件
