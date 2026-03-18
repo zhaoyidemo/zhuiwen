@@ -80,6 +80,7 @@ class VideoFavorite(Base):
     aweme_id: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     data: Mapped[dict] = mapped_column(JSONB, default=dict)
     ai_analysis: Mapped[dict] = mapped_column(JSONB, default=dict)
+    first5s_analysis: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 

@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services import tikhub_service, db_service, ai_service
+from services import tikhub_service, db_service, ai_service, video_processor
 from database import get_db
 
 logger = logging.getLogger(__name__)
@@ -103,6 +103,36 @@ async def analyze_favorite(aweme_id: str, body: dict, db: AsyncSession = Depends
     except Exception as e:
         logger.error(f"AI 分析失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{aweme_id}/analyze-first5s")
+async def analyze_first5s(aweme_id: str, body: dict, db: AsyncSession = Depends(get_db)):
+    """前5秒截帧分析"""
+    video_data = body.get("video_data", {})
+    if not video_data:
+        raise HTTPException(status_code=400, detail="缺少视频数据")
+
+    video_url = video_data.get("video_url", "")
+    if not video_url:
+        raise HTTPException(status_code=400, detail="该视频没有可用的视频链接")
+
+    # 服务端截帧
+    frames = await video_processor.extract_first_frames(video_url, seconds=5, fps=1)
+    if not frames:
+        raise HTTPException(status_code=500, detail="截帧失败，请稍后重试")
+
+    logger.info(f"前5秒截帧完成: {len(frames)} 帧, aweme_id={aweme_id}")
+
+    # Claude Vision 分析
+    analysis = await ai_service.analyze_first_5s(video=video_data, frame_data_uris=frames)
+
+    # 保存分析结果
+    try:
+        await db_service.save_ai_analysis(db, aweme_id, analysis, analysis_type="first5s")
+    except Exception as e:
+        logger.warning(f"保存前5秒分析结果失败: {e}")
+
+    return {**analysis, "frames": frames}
 
 
 # ---- 提示词管理 ----

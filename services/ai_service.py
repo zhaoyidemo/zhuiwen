@@ -147,3 +147,99 @@ async def analyze_single_video(
         "prompt_used": system_prompt,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+
+
+FIRST_5S_PROMPT = """你是一位资深的短视频内容策划专家，专精于"黄金前5秒"留人策略研究。
+
+我会发送一条抖音视频前5秒的逐秒截帧（第0秒、第1秒、第2秒、第3秒、第4秒、第5秒），请你根据画面内容进行深度分析。
+
+请从以下维度分析：
+
+## 一、开场钩子类型判断
+判断这条视频使用了哪种开场钩子（可多选）：
+- 悬念钩子：开头抛出一个让人好奇的问题或场景
+- 冲突钩子：展示矛盾、对比、反差
+- 利益钩子：直接告诉观众"看完你能获得什么"
+- 情绪钩子：用强烈的情绪（震惊、搞笑、感动）抓住注意力
+- 视觉钩子：用惊艳的画面、特效、运镜吸引眼球
+- 人物钩子：有辨识度的人物直接出镜
+- 声音钩子：音乐、音效、语气的运用
+
+## 二、逐秒画面拆解
+对每一秒的画面内容进行描述和分析：
+- 第0秒（首帧）：观众第一眼看到什么？是否足够吸引停留？
+- 第1-2秒：信息密度如何？是否建立了期待感？
+- 第3-5秒：是否完成了"留人"？观众是否有继续看下去的动力？
+
+## 三、留存策略评分（1-10分）
+- 注意力抓取速度（首帧是否有效）
+- 信息传递效率（前5秒传达了什么核心信息）
+- 情绪曲线设计（情绪变化节奏）
+- 视觉表现力（构图、色彩、文字排版）
+- 继续观看动力（第5秒时是否让人想看下去）
+
+## 四、可借鉴的关键技巧
+列出3-5个具体可复用的技巧，每个技巧给出实操建议。
+
+## 五、优化建议
+如果要改进前5秒的留人效果，你有什么具体建议？
+
+请用结构化的方式输出，分析要具体到画面细节，不要泛泛而谈。"""
+
+
+async def analyze_first_5s(video: dict, frame_data_uris: list[str]) -> dict:
+    """用 Claude Vision 分析视频前5秒截帧"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    video_text = _format_video_for_prompt(video)
+
+    # 构建包含截帧图片的消息内容
+    content = []
+    for i, data_uri in enumerate(frame_data_uris):
+        # data:image/jpeg;base64,xxxx → 提取 media_type 和 data
+        if data_uri.startswith("data:"):
+            header, b64_data = data_uri.split(",", 1)
+            media_type = header.split(":")[1].split(";")[0]  # image/jpeg
+        else:
+            media_type = "image/jpeg"
+            b64_data = data_uri
+
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": b64_data},
+        })
+        content.append({"type": "text", "text": f"第 {i} 秒截帧"})
+
+    content.append({"type": "text", "text": f"\n\n{video_text}\n\n请根据以上截帧和视频数据，进行黄金前5秒分析。"})
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=4096,
+            system=FIRST_5S_PROMPT,
+            messages=[{"role": "user", "content": content}],
+        )
+        result_text = message.content[0].text
+    except Exception as e:
+        logger.error(f"前5秒分析 Claude API 失败: {e}")
+        # 带图失败时，尝试纯文本分析
+        try:
+            fallback_content = [{"type": "text", "text": f"{video_text}\n\n（截帧图片发送失败，请仅根据文本数据分析该视频可能的前5秒策略）"}]
+            message = client.messages.create(
+                model="claude-opus-4-20250514",
+                max_tokens=4096,
+                system=FIRST_5S_PROMPT,
+                messages=[{"role": "user", "content": fallback_content}],
+            )
+            result_text = message.content[0].text
+        except Exception as e2:
+            logger.error(f"前5秒纯文本分析也失败: {e2}")
+            result_text = f"分析失败：{str(e2)}"
+
+    return {
+        "result": result_text,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }

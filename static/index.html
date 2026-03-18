@@ -783,7 +783,7 @@
                         :class="first5sAnalyzingId === v.aweme_id ? 'opacity-50 cursor-wait' : ''">
                         <svg x-show="first5sAnalyzingId === v.aweme_id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <svg x-show="first5sAnalyzingId !== v.aweme_id" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span x-text="first5sAnalyzingId === v.aweme_id ? '截帧分析中...' : (v.first5s_analysis?.result ? '重新前5秒' : '前5秒分析')"></span>
+                        <span x-text="first5sAnalyzingId === v.aweme_id ? '截帧分析中（约1分钟）...' : (v.first5s_analysis?.result ? '重新前5秒' : '前5秒分析')"></span>
                       </button>
                     </div>
 
@@ -1218,60 +1218,15 @@ function app() {
       this.aiAnalyzingId = null;
     },
 
-    // 前5秒截帧分析
-    captureVideoFrames(videoUrl, times = [0, 1, 2, 3, 4]) {
-      return new Promise((resolve, reject) => {
-        const video = document.createElement('video');
-        video.crossOrigin = 'anonymous';
-        video.preload = 'auto';
-        video.muted = true;
-        const frames = [];
-        let currentIdx = 0;
-
-        video.addEventListener('error', () => reject(new Error('视频加载失败，可能存在跨域限制')));
-        video.addEventListener('loadedmetadata', () => { video.currentTime = times[0]; });
-        video.addEventListener('seeked', () => {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.min(video.videoWidth, 640);
-            canvas.height = Math.round(canvas.width * video.videoHeight / video.videoWidth);
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            frames.push(canvas.toDataURL('image/jpeg', 0.8));
-          } catch (e) {
-            reject(new Error('截帧失败（跨域限制）: ' + e.message));
-            return;
-          }
-          currentIdx++;
-          if (currentIdx < times.length) {
-            video.currentTime = times[currentIdx];
-          } else {
-            resolve(frames);
-          }
-        });
-        video.src = videoUrl;
-      });
-    },
-
+    // 前5秒截帧分析（服务端 FFMPEG 截帧 + Claude Vision 分析）
     async runFirst5sAnalysis(v, idx) {
       if (this.first5sAnalyzingId) return;
       this.first5sAnalyzingId = v.aweme_id;
       try {
-        // 第一步：前端截帧
-        let frames = [];
-        try {
-          frames = await this.captureVideoFrames(v.video_url);
-        } catch (e) {
-          // 截帧失败，回退到纯文本分析
-          console.warn('前端截帧失败:', e.message);
-        }
-
-        // 第二步：发送给后端分析
         const res = await this.api('POST', '/favorite/' + v.aweme_id + '/analyze-first5s', {
           video_data: v,
-          frames: frames,
         });
-        this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], first5s_analysis: { ...res, frames } };
+        this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], first5s_analysis: res };
       } catch (e) {
         this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], first5s_analysis: { result: '分析失败: ' + e.message, created_at: '', frames: [] } };
       }

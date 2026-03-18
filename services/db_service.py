@@ -238,9 +238,10 @@ async def get_account_xingtu(db: AsyncSession, sec_user_id: str) -> dict | None:
     return None
 
 
-async def save_ai_analysis(db: AsyncSession, aweme_id: str, analysis: dict) -> None:
+async def save_ai_analysis(db: AsyncSession, aweme_id: str, analysis: dict, analysis_type: str = "ai") -> None:
+    col = "first5s_analysis" if analysis_type == "first5s" else "ai_analysis"
     await db.execute(
-        update(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id).values(ai_analysis=analysis)
+        update(VideoFavorite).where(VideoFavorite.aweme_id == aweme_id).values(**{col: analysis})
     )
     await db.commit()
 
