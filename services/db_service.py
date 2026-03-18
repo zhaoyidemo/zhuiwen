@@ -148,6 +148,7 @@ async def get_favorites(db: AsyncSession) -> list[dict]:
     )
     return [{"id": f.id, "aweme_id": f.aweme_id, "data": f.data,
              "ai_analysis": f.ai_analysis or {},
+             "first5s_analysis": getattr(f, 'first5s_analysis', None) or {},
              "created_at": str(f.created_at) if f.created_at else ""}
             for f in result.scalars().all()]
 

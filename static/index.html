@@ -375,7 +375,7 @@
                 <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                   <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                   星图分析
-                  <span x-show="xingtuData.cached_at" class="text-xs font-normal text-gray-400" x-text="xingtuData.cached_at ? '· 更新于 ' + xingtuData.cached_at : ''"></span>
+                  <span x-show="xingtuData?.cached_at" class="text-xs font-normal text-gray-400" x-text="xingtuData?.cached_at ? '· 更新于 ' + xingtuData.cached_at : ''"></span>
                 </h3>
                 <button @click="xingtuData = null" class="text-xs text-gray-400 hover:text-gray-600">收起</button>
               </div>
@@ -397,7 +397,7 @@
                   @click="loadXingtuModule(selectedAccount, 'index', true)"
                   class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData?.xingtu_index && xingtuCleanKeys(xingtuData.xingtu_index).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">星图指数</h4>
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <template x-for="key in xingtuCleanKeys(xingtuData.xingtu_index).filter(k => xingtuIndexVal(xingtuData.xingtu_index[k]) !== '')" :key="key">
@@ -433,7 +433,7 @@
                   @click="loadXingtuModule(selectedAccount, 'cp', true)"
                   class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData?.cp_info && xingtuCleanKeys(xingtuData.cp_info).length">
                 <h4 class="text-base font-semibold text-gray-800 mb-4">性价比分析</h4>
                 <!-- 预估播放量 -->
                 <div class="mb-4 flex items-center gap-2" x-show="xingtuData.cp_info.expect_vv">
@@ -551,16 +551,16 @@
                   @click="loadXingtuModule(selectedAccount, 'price', true)"
                   class="text-xs text-blue-500 hover:text-blue-600 font-medium shrink-0">重试</button>
               </div>
-              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData.service_price && Object.keys(xingtuData.service_price).length > 0">
+              <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6" x-show="xingtuData?.service_price && Object.keys(xingtuData.service_price).length > 0">
                 <div class="flex items-center justify-between mb-4">
                   <h4 class="text-base font-semibold text-gray-800">商单报价</h4>
                   <button @click="loadXingtuModule(selectedAccount, 'price', true)" class="text-xs text-gray-400 hover:text-blue-500">刷新</button>
                 </div>
                 <!-- 视频渠道不可用时的提示 -->
-                <template x-if="!xingtuData.service_price['视频'] || !Object.keys(xingtuData.service_price['视频'] || {}).length">
+                <template x-if="!xingtuData?.service_price?.['视频'] || !Object.keys(xingtuData?.service_price?.['视频'] || {}).length">
                   <p class="text-sm text-gray-400 py-1">⚠ 视频报价暂不可用</p>
                 </template>
-                <template x-for="channel in Object.keys(xingtuData.service_price).filter(c => c === '视频')" :key="channel">
+                <template x-for="channel in Object.keys(xingtuData?.service_price || {}).filter(c => c === '视频')" :key="channel">
                   <div class="mb-5">
                     <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2" x-text="channel === '视频' ? '抖音短视频' : '抖音直播'"></p>
                     <!-- price_info 列表 -->
@@ -783,7 +783,7 @@
                         :class="first5sAnalyzingId === v.aweme_id ? 'opacity-50 cursor-wait' : ''">
                         <svg x-show="first5sAnalyzingId === v.aweme_id" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                         <svg x-show="first5sAnalyzingId !== v.aweme_id" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span x-text="first5sAnalyzingId === v.aweme_id ? '截帧分析中（约1分钟）...' : (v.first5s_analysis?.result ? '重新前5秒' : '前5秒分析')"></span>
+                        <span x-text="first5sAnalyzingId === v.aweme_id ? (first5sStage || '分析中...') : (v.first5s_analysis?.result ? '重新前5秒' : '前5秒分析')"></span>
                       </button>
                     </div>
 
@@ -1219,18 +1219,27 @@ function app() {
     },
 
     // 前5秒截帧分析（服务端 FFMPEG 截帧 + Claude Vision 分析）
+    first5sStage: '',
     async runFirst5sAnalysis(v, idx) {
       if (this.first5sAnalyzingId) return;
       this.first5sAnalyzingId = v.aweme_id;
+      this.first5sStage = '正在获取视频并截帧...';
       try {
+        // 获取自定义提示词（如有）
+        if (!this.aiPrompts.length) await this.loadAiPrompts();
+        const p = this.aiPrompts.find(p => p.name === '前5秒分析');
+
+        this.first5sStage = '截帧中，请稍候...';
         const res = await this.api('POST', '/favorite/' + v.aweme_id + '/analyze-first5s', {
           video_data: v,
+          prompt: p?.content || '',
         });
         this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], first5s_analysis: res };
       } catch (e) {
         this.favoriteVideos[idx] = { ...this.favoriteVideos[idx], first5s_analysis: { result: '分析失败: ' + e.message, created_at: '', frames: [] } };
       }
       this.first5sAnalyzingId = null;
+      this.first5sStage = '';
     },
 
     renderMarkdown(text) {
