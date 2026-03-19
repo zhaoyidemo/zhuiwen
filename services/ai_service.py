@@ -362,17 +362,38 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
         result_text = ""
         search_results = []
 
+        # 记录所有 block 类型用于调试
+        block_types = [block.type for block in response.content]
+        logger.info(f"嘉宾搜索响应 block 类型: {block_types}")
+
         # 提取文本和搜索结果 URL
         for block in response.content:
             if block.type == "text":
                 result_text += block.text
-            elif block.type == "web_search_tool_result":
-                for sr in getattr(block, "search_results", []):
-                    search_results.append({
-                        "url": getattr(sr, "url", ""),
-                        "title": getattr(sr, "title", ""),
-                        "snippet": getattr(sr, "encrypted_content", "") or getattr(sr, "snippet", ""),
-                    })
+            else:
+                # 尝试从各种 block 类型中提取搜索结果
+                # 记录非 text block 的结构
+                logger.info(f"非文本 block: type={block.type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
+
+                # web_search_tool_result 类型
+                results_list = getattr(block, "search_results", None)
+                if not results_list:
+                    # 可能嵌套在 content 中
+                    block_content = getattr(block, "content", None)
+                    if isinstance(block_content, list):
+                        for item in block_content:
+                            results_list_inner = getattr(item, "search_results", None)
+                            if results_list_inner:
+                                results_list = results_list_inner
+                                break
+
+                if results_list:
+                    for sr in results_list:
+                        url = getattr(sr, "url", "") or (sr.get("url", "") if isinstance(sr, dict) else "")
+                        title = getattr(sr, "title", "") or (sr.get("title", "") if isinstance(sr, dict) else "")
+                        snippet = getattr(sr, "snippet", "") or getattr(sr, "encrypted_content", "") or (sr.get("snippet", "") if isinstance(sr, dict) else "")
+                        if url:
+                            search_results.append({"url": url, "title": title, "snippet": snippet})
 
         # 对搜索结果按 URL 去重
         seen_urls = set()
@@ -382,7 +403,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
                 seen_urls.add(sr["url"])
                 unique_results.append(sr)
 
-        logger.info(f"嘉宾搜索完成: {guest_name}, 文本长度={len(result_text)}, 搜索结果={len(unique_results)}条")
+        logger.info(f"嘉宾搜索完成: {guest_name}, 文本长度={len(result_text)}, 原始搜索结果={len(search_results)}条, 去重后={len(unique_results)}条")
 
         return {
             "summary": result_text,
