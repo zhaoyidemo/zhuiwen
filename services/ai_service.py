@@ -436,20 +436,34 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
     }
 
 
-def _format_materials_context(guest_name: str, materials: list[dict]) -> str:
-    """将素材格式化为上下文文本"""
+def _format_materials_context(guest_name: str, materials: list[dict], max_chars: int = 300000) -> str:
+    """将素材格式化为上下文文本，控制总长度不超限"""
     context_lines = [f"# 嘉宾：{guest_name}\n"]
+    total_chars = 0
+
     for i, m in enumerate(materials, 1):
-        context_lines.append(f"## 资料 {i}：{m.get('title', '(无标题)')}")
+        entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')}"]
         if m.get("platform"):
-            context_lines.append(f"- 平台：{m['platform']}")
+            entry_lines.append(f"- 平台：{m['platform']}")
         if m.get("url"):
-            context_lines.append(f"- 来源：{m['url']}")
+            entry_lines.append(f"- 来源：{m['url']}")
         if m.get("summary"):
-            context_lines.append(f"- 摘要：{m['summary']}")
+            entry_lines.append(f"- 摘要：{m['summary']}")
         if m.get("content"):
-            context_lines.append(f"- 内容：{m['content']}")
-        context_lines.append("")
+            content = m["content"]
+            # 单篇内容最多 5000 字
+            if len(content) > 5000:
+                content = content[:5000] + "\n[内容已截断]"
+            entry_lines.append(f"- 内容：{content}")
+        entry_lines.append("")
+
+        entry_text = "\n".join(entry_lines)
+        if total_chars + len(entry_text) > max_chars:
+            context_lines.append(f"\n[剩余 {len(materials) - i + 1} 条素材因长度限制已省略]")
+            break
+        context_lines.append(entry_text)
+        total_chars += len(entry_text)
+
     return "\n".join(context_lines)
 
 
