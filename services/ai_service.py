@@ -75,89 +75,86 @@ DEFAULT_PROMPTS = {
 
     "前5秒分析": FIRST_5S_PROMPT,
 
-    "嘉宾整理归档": """你是一位专业的媒体研究员。请根据提供的嘉宾资料，整理出结构化的嘉宾档案。
+    "嘉宾搜索策略": """搜索此人接受过的采访和访谈，覆盖以下类型：
+- 文字采访稿、深度对话、专访
+- 视频访谈、播客节目
+- 演讲、公开发言、论坛圆桌
+- 新闻报道中的引述和观点
 
-请从以下维度整理：
+请用多个不同的搜索关键词组合来搜索，确保覆盖面足够广。注意区分此人作为受访者的内容和其他同名者的内容。""",
 
-## 一、基本信息
-- 姓名、职务、所属机构
-- 公开社交媒体账号
+    "嘉宾研究报告": """你是「继续追问」节目的资深研究员。请根据嘉宾的全部采访素材，生成一份深度研究报告。
 
-## 二、职业经历
-- 按时间线梳理主要经历
+你的任务不是简单罗列信息，而是从海量素材中发现规律、矛盾和空白。
 
-## 三、核心观点与成就
-- 代表性言论、著作、项目
+## 一、人物概览
+- 一段话概括此人（身份、核心标签、公众认知）
 
-## 四、媒体曝光
-- 近期公开发言、采访、活动
+## 二、关键经历时间线
+- 按时间梳理重要节点，每个节点标注信息来源
 
-## 五、资料可信度评估
-- 对各项信息的来源和可靠性进行说明
+## 三、核心观点图谱
+- 提炼此人最核心的3-5个观点主张
+- 每个观点附上原文引述（带出处）
+- 标注观点的演变：是否前后有变化或矛盾？
 
-请用结构化方式输出，每条信息标注来源。""",
+## 四、金句库
+- 从采访原文中提取10-15句最有价值的直接引语
+- 每句标注出处和语境
 
-    "嘉宾人物画像": """你是一位深度人物分析专家。请根据嘉宾资料，绘制一份立体的人物画像。
+## 五、被问烂了的问题 TOP5
+- 统计各采访中被反复问到的话题
+- 标注每个话题被问过几次、在哪些采访中出现
+- 这些话题在我们的采访中必须避开或换角度
 
-请从以下维度分析：
+## 六、没人深挖的方向
+- 此人在采访中主动提起但采访者没有跟进的话题
+- 此人的经历/身份中有价值但从未被问到的领域
+- 近期动态中可能延伸出的新话题
 
-## 一、身份定位
-- 在行业中的角色和影响力
+## 七、矛盾与争议点
+- 此人在不同场合说过矛盾的话吗？
+- 公众对此人有哪些争议？
+- 这些矛盾和争议是天然的追问素材
 
-## 二、思维模式与价值观
-- 从公开言论中提炼核心观点和思维方式
+请基于素材原文分析，不要臆测。每个发现都要有出处支撑。""",
 
-## 三、传播风格
-- 说话风格、内容偏好、常用表达
+    "采访策划方案": """你是「继续追问」节目的总编导。请根据嘉宾研究报告和原始素材，设计一份完整的采访策划方案。
 
-## 四、受众画像
-- 其粉丝/关注者的特征
+核心原则：不问别人问过的问题，专攻别人没挖到的深度。
 
-## 五、合作契合度分析
-- 与"继续追问"节目风格的匹配度
-- 潜在话题方向
+## 一、采访定位
+- 这期节目的核心命题是什么？（一句话）
+- 和此人之前的采访相比，我们的差异化在哪？
 
-请深入分析，结论要有资料支撑。""",
+## 二、选题方向（3-5个）
+每个选题：
+- **话题**：一句话概括
+- **为什么别人没问好**：分析之前采访的不足
+- **我们的切入角度**：如何问出新东西
+- **预期爆点**：哪些观点可能引发讨论
 
-    "嘉宾选题策划": """你是一位资深的内容策划专家，擅长策划高质量的对话类节目选题。
+## 三、问题清单
+按采访节奏排列（破冰→核心→深入→收尾），每个问题标注：
+- 🔴 必问 / 🟡 选问
+- 预判嘉宾可能的回答方向
+- ➡️ 追问设计：如果嘉宾这样回答，追问什么？
+- ⚡ 如果嘉宾回避，如何换角度再问？
 
-请根据嘉宾资料，策划3-5个选题方向：
+## 四、追问武器库
+- 从研究报告中的"矛盾点"设计3-5个追问弹药
+- 格式：「你在[某次采访]中说过[原话]，但[另一场合]又说[原话]，能解释一下吗？」
 
-每个选题包含：
-## 选题 N：[选题名称]
-- **核心话题**：一句话概括
-- **话题价值**：为什么观众会感兴趣？
-- **预期爆点**：哪些观点/话题可能引发讨论？
-- **关键问题**：3-5个核心提问
-- **内容结构**：对话的起承转合设计
-- **传播预判**：预估哪些片段适合短视频二创
+## 五、节奏设计
+- 预估总时长和每个板块的时间分配
+- 标注高潮点和情绪转折点
+- 哪些片段适合短视频二创
 
-请从观众价值出发，策划有深度且有传播力的选题。""",
+## 六、风险预案
+- 可能的敏感话题及应对方式
+- 嘉宾可能的回避策略及破解方式
 
-    "嘉宾采访准备": """你是一位资深的访谈记者和节目编导。请根据嘉宾资料，准备一份详细的采访提纲。
-
-请包含以下部分：
-
-## 一、嘉宾背景速览
-- 关键信息提要（3-5条）
-
-## 二、破冰话题
-- 2-3个轻松的开场话题
-
-## 三、核心问题清单
-- 按话题分组，每组3-5个递进式问题
-- 标注"必问"和"选问"
-
-## 四、敏感话题预案
-- 可能的敏感点及应对方式
-
-## 五、追问策略
-- 根据嘉宾说话风格，准备追问技巧
-
-## 六、金句预判
-- 预判哪些话题可能产生金句
-
-请确保问题有深度，同时考虑节目的传播效果。""",
+请让每个问题都有明确的"追问路径"，这是「继续追问」的核心价值。""",
 }
 
 
@@ -364,12 +361,13 @@ def _parse_search_results(text: str) -> list[dict]:
     return results
 
 
-async def guest_web_search(guest_name: str, guest_description: str = "") -> dict:
+async def guest_web_search(guest_name: str, guest_description: str = "", custom_search_prompt: str = "") -> dict:
     """多轮 Claude web search 搜索嘉宾采访资料，合并去重"""
     if not settings.ANTHROPIC_API_KEY:
         return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
 
     desc_hint = f"\n此人的身份信息：{guest_description}" if guest_description else ""
+    search_strategy = custom_search_prompt or DEFAULT_PROMPTS.get("嘉宾搜索策略", "")
 
     output_format = """
 
@@ -386,11 +384,13 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
 
 每条记录必须包含完整的可点击URL链接。"""
 
+    base_instruction = f"请搜索关于「{guest_name}」的公开资料。{desc_hint}\n\n搜索策略：\n{search_strategy}\n"
+
     # 三轮搜索，不同角度
     search_rounds = [
-        f"请搜索「{guest_name}」接受过的深度采访和专访文章。{desc_hint}\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话。{output_format}",
-        f"请搜索「{guest_name}」的访谈视频、播客节目和公开演讲。{desc_hint}\n搜索关键词建议：{guest_name} 访谈、{guest_name} 播客、{guest_name} 演讲、{guest_name} TED。{output_format}",
-        f"请搜索「{guest_name}」在媒体上发表的观点、评论文章和深度报道。{desc_hint}\n搜索关键词建议：{guest_name} 观点、{guest_name} 评论、{guest_name} 报道、{guest_name} 人物。{output_format}",
+        f"{base_instruction}\n本轮重点：深度采访、专访文章、对话记录。\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话。{output_format}",
+        f"{base_instruction}\n本轮重点：视频访谈、播客节目、公开演讲。\n搜索关键词建议：{guest_name} 访谈、{guest_name} 播客、{guest_name} 演讲。{output_format}",
+        f"{base_instruction}\n本轮重点：观点评论、深度报道、人物特写。\n搜索关键词建议：{guest_name} 观点、{guest_name} 评论、{guest_name} 报道、{guest_name} 人物。{output_format}",
     ]
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -436,25 +436,8 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
     }
 
 
-async def analyze_guest(
-    guest_name: str,
-    materials: list[dict],
-    analysis_type: str,
-    custom_prompt: str = "",
-) -> dict:
-    """根据嘉宾资料进行 AI 分析"""
-    if not settings.ANTHROPIC_API_KEY:
-        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
-
-    type_to_prompt_name = {
-        "archive": "嘉宾整理归档",
-        "portrait": "嘉宾人物画像",
-        "topic": "嘉宾选题策划",
-        "interview": "嘉宾采访准备",
-    }
-    prompt_name = type_to_prompt_name.get(analysis_type, "嘉宾整理归档")
-    system_prompt = custom_prompt or DEFAULT_PROMPTS.get(prompt_name, "")
-
+def _format_materials_context(guest_name: str, materials: list[dict]) -> str:
+    """将素材格式化为上下文文本"""
     context_lines = [f"# 嘉宾：{guest_name}\n"]
     for i, m in enumerate(materials, 1):
         context_lines.append(f"## 资料 {i}：{m.get('title', '(无标题)')}")
@@ -467,14 +450,50 @@ async def analyze_guest(
         if m.get("content"):
             context_lines.append(f"- 内容：{m['content']}")
         context_lines.append("")
+    return "\n".join(context_lines)
 
-    user_text = "\n".join(context_lines) + "\n请根据以上资料进行分析。"
+
+async def analyze_guest(
+    guest_name: str,
+    materials: list[dict],
+    analysis_type: str,
+    custom_prompt: str = "",
+    prior_analyses: list[dict] = None,
+) -> dict:
+    """根据嘉宾资料进行 AI 分析（递进式：后续分析包含前序结果）"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    type_to_prompt_name = {
+        "research": "嘉宾研究报告",
+        "interview": "采访策划方案",
+    }
+    prompt_name = type_to_prompt_name.get(analysis_type, "嘉宾研究报告")
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get(prompt_name, "")
+
+    # 构建上下文：素材全文
+    materials_text = _format_materials_context(guest_name, materials)
+
+    # 递进式：采访策划时，包含研究报告作为前序分析
+    prior_text = ""
+    if prior_analyses:
+        for pa in prior_analyses:
+            pa_type = pa.get("analysis_type", "")
+            pa_result = pa.get("content", {}).get("result", "")
+            if pa_result:
+                label = type_to_prompt_name.get(pa_type, pa_type)
+                prior_text += f"\n\n---\n# 前序分析：{label}\n{pa_result}\n"
+
+    if prior_text:
+        user_text = f"{prior_text}\n\n---\n# 原始素材\n{materials_text}\n\n请基于前序分析结论和原始素材进行分析。前序分析已覆盖的内容不要重复，在其基础上深入你的部分。"
+    else:
+        user_text = f"{materials_text}\n请根据以上资料进行分析。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = client.messages.create(
             model="claude-opus-4-20250514",
-            max_tokens=4096,
+            max_tokens=8096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
         )
@@ -488,3 +507,45 @@ async def analyze_guest(
         "prompt_used": prompt_name,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
+
+
+async def guest_chat(guest_name: str, materials: list[dict], analyses: list[dict], user_message: str) -> str:
+    """对话预演：AI 扮演嘉宾进行模拟对话"""
+    if not settings.ANTHROPIC_API_KEY:
+        return "错误：ANTHROPIC_API_KEY 未配置"
+
+    # 构建嘉宾人设
+    materials_text = _format_materials_context(guest_name, materials)
+
+    analyses_text = ""
+    for a in analyses:
+        result = a.get("content", {}).get("result", "")
+        if result:
+            analyses_text += f"\n{result}\n"
+
+    system_prompt = f"""你现在扮演「{guest_name}」，正在接受「继续追问」节目的采访。
+
+请根据以下资料还原此人的说话风格、观点立场和思维方式来回答问题：
+- 用此人惯用的表达方式和语气
+- 基于此人已知的观点和立场来回应
+- 遇到敏感问题时，模拟此人可能的回避或应对方式
+- 如果问题超出已知资料范围，用此人的思维模式合理推演
+
+{analyses_text}
+
+{materials_text}
+
+请始终保持角色，用第一人称回答。回答要自然、有深度，像真实的采访对话。"""
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=2048,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        return message.content[0].text
+    except Exception as e:
+        logger.error(f"对话预演失败: {e}", exc_info=True)
+        return f"对话失败：{str(e)}"

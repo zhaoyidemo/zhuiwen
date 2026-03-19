@@ -60,7 +60,15 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
 
     async def _bg_search():
         try:
-            result = await ai_service.guest_web_search(guest_name, guest_desc)
+            # 读取自定义搜索策略提示词
+            custom_search = ""
+            async with async_session() as s:
+                prompts = await db_service.get_ai_prompts(s)
+                for p in prompts:
+                    if p["name"] == "嘉宾搜索策略":
+                        custom_search = p["content"]
+                        break
+            result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search)
             search_results = result.get("search_results", [])
 
             async with async_session() as session:
@@ -130,8 +138,8 @@ async def delete_material(guest_id: int, material_id: int, db: AsyncSession = De
 
 @router.post("/{guest_id}/analyze")
 async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    analysis_type = body.get("analysis_type", "archive")
-    if analysis_type not in ("archive", "portrait", "topic", "interview"):
+    analysis_type = body.get("analysis_type", "research")
+    if analysis_type not in ("research", "interview"):
         raise HTTPException(status_code=400, detail="无效的分析类型")
 
     guest = await db_service.get_guest(db, guest_id)
@@ -145,6 +153,12 @@ async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = D
     guest_name = guest["name"]
     custom_prompt = body.get("prompt", "")
 
+    # 递进式：采访策划时，自动获取已有的研究报告作为前序分析
+    prior_analyses = []
+    if analysis_type == "interview":
+        all_analyses = await db_service.get_guest_analyses(db, guest_id)
+        prior_analyses = [a for a in all_analyses if a["analysis_type"] == "research"]
+
     async def _bg_analyze():
         try:
             result = await ai_service.analyze_guest(
@@ -152,6 +166,7 @@ async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = D
                 materials=materials,
                 analysis_type=analysis_type,
                 custom_prompt=custom_prompt,
+                prior_analyses=prior_analyses,
             )
             async with async_session() as session:
                 await db_service.save_guest_analysis(session, guest_id, analysis_type, result)
@@ -177,3 +192,21 @@ async def list_analyses(guest_id: int, db: AsyncSession = Depends(get_db)):
 async def delete_analysis(guest_id: int, analysis_id: int, db: AsyncSession = Depends(get_db)):
     await db_service.delete_guest_analysis(db, analysis_id)
     return {"ok": True}
+
+
+@router.post("/{guest_id}/chat")
+async def guest_chat(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+    """对话预演：AI 扮演嘉宾进行模拟对话"""
+    message = body.get("message", "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="消息不能为空")
+
+    guest = await db_service.get_guest(db, guest_id)
+    if not guest:
+        raise HTTPException(status_code=404, detail="嘉宾不存在")
+
+    materials = await db_service.get_guest_materials(db, guest_id)
+    analyses = await db_service.get_guest_analyses(db, guest_id)
+
+    reply = await ai_service.guest_chat(guest["name"], materials, analyses, message)
+    return {"reply": reply}
