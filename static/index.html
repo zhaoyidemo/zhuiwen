@@ -1858,7 +1858,13 @@ function app() {
       this.guestSearching = true; this.guestError = '';
       try {
         await this.api('POST', '/guest/' + this.selectedGuest.id + '/search', {});
-        await this.loadGuestMaterials(this.selectedGuest.id);
+        // 后台搜索中，轮询等待素材出现
+        const prevCount = this.guestMaterials.length;
+        for (let i = 0; i < 40; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          await this.loadGuestMaterials(this.selectedGuest.id);
+          if (this.guestMaterials.length > prevCount) break;
+        }
       } catch (e) { this.guestError = '搜索失败: ' + e.message; }
       this.guestSearching = false;
     },
@@ -1896,7 +1902,13 @@ function app() {
           analysis_type: type,
           prompt: p?.content || '',
         });
-        await this.loadGuestAnalyses(this.selectedGuest.id);
+        // 后台分析中，轮询等待结果
+        const prevCount = this.guestAnalyses.length;
+        for (let i = 0; i < 40; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          await this.loadGuestAnalyses(this.selectedGuest.id);
+          if (this.guestAnalyses.length > prevCount) break;
+        }
       } catch (e) { this.guestError = '分析失败: ' + e.message; }
       this.guestAnalyzing = null;
     },

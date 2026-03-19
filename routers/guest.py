@@ -1,10 +1,11 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services import db_service, ai_service
-from database import get_db
+from database import get_db, async_session
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/guest", tags=["嘉宾研究"])
@@ -48,29 +49,31 @@ async def list_materials(guest_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{guest_id}/search")
 async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    """使用 Claude web search 搜索嘉宾采访资料"""
+    """使用 Claude web search 搜索嘉宾采访资料（后台任务）"""
     guest = await db_service.get_guest(db, guest_id)
     if not guest:
         raise HTTPException(status_code=404, detail="嘉宾不存在")
 
-    try:
-        result = await ai_service.guest_web_search(guest["name"], guest["description"])
+    guest_name = guest["name"]
+    guest_desc = guest["description"]
 
-        saved_materials = []
-        # 将搜索汇总存为一条素材
-        if result.get("summary"):
-            mat = await db_service.add_guest_material(db, guest_id, {
-                "type": "search_result",
-                "title": f"网络搜索汇总 - {guest['name']}",
-                "content": result["summary"],
-                "raw_data": {"type": "search_summary", "created_at": result.get("created_at", "")},
-            })
-            saved_materials.append(mat)
+    async def _bg_search():
+        try:
+            result = await ai_service.guest_web_search(guest_name, guest_desc)
+            async with async_session() as session:
+                if result.get("summary"):
+                    await db_service.add_guest_material(session, guest_id, {
+                        "type": "search_result",
+                        "title": f"网络搜索汇总 - {guest_name}",
+                        "content": result["summary"],
+                        "raw_data": {"type": "search_summary", "created_at": result.get("created_at", "")},
+                    })
+            logger.info(f"嘉宾搜索完成: {guest_name}")
+        except Exception as e:
+            logger.error(f"嘉宾后台搜索失败: {e}", exc_info=True)
 
-        return {"summary": result.get("summary", ""), "materials": saved_materials}
-    except Exception as e:
-        logger.error(f"嘉宾搜索失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    asyncio.create_task(_bg_search())
+    return {"ok": True, "message": "搜索已开始，请稍候刷新查看结果"}
 
 
 @router.post("/{guest_id}/material")
@@ -94,7 +97,7 @@ async def delete_material(guest_id: int, material_id: int, db: AsyncSession = De
 
 
 @router.post("/{guest_id}/analyze")
-async def analyze_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
     analysis_type = body.get("analysis_type", "archive")
     if analysis_type not in ("archive", "portrait", "topic", "interview"):
         raise HTTPException(status_code=400, detail="无效的分析类型")
@@ -107,14 +110,25 @@ async def analyze_guest(guest_id: int, body: dict, db: AsyncSession = Depends(ge
     if not materials:
         raise HTTPException(status_code=400, detail="暂无资料，请先搜索或添加素材")
 
-    result = await ai_service.analyze_guest(
-        guest_name=guest["name"],
-        materials=materials,
-        analysis_type=analysis_type,
-        custom_prompt=body.get("prompt", ""),
-    )
-    saved = await db_service.save_guest_analysis(db, guest_id, analysis_type, result)
-    return saved
+    guest_name = guest["name"]
+    custom_prompt = body.get("prompt", "")
+
+    async def _bg_analyze():
+        try:
+            result = await ai_service.analyze_guest(
+                guest_name=guest_name,
+                materials=materials,
+                analysis_type=analysis_type,
+                custom_prompt=custom_prompt,
+            )
+            async with async_session() as session:
+                await db_service.save_guest_analysis(session, guest_id, analysis_type, result)
+            logger.info(f"嘉宾分析完成: {guest_name} - {analysis_type}")
+        except Exception as e:
+            logger.error(f"嘉宾后台分析失败: {e}", exc_info=True)
+
+    asyncio.create_task(_bg_analyze())
+    return {"ok": True, "message": "分析已开始，请稍候刷新查看结果"}
 
 
 @router.get("/{guest_id}/analyses")
