@@ -333,21 +333,38 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
 
 async def guest_web_search(guest_name: str, guest_description: str = "") -> dict:
     """使用 Claude web search 搜索嘉宾采访资料并整理"""
+    import re
+
     if not settings.ANTHROPIC_API_KEY:
         return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
 
     search_prompt = f"请搜索关于「{guest_name}」的公开采访、访谈、对话记录。"
     if guest_description:
         search_prompt += f"\n此人的身份信息：{guest_description}"
-    search_prompt += "\n\n请尽可能全面地搜索此人接受过的采访和访谈，包括文字采访稿、视频访谈报道、播客对话等。"
-    search_prompt += "\n注意区分此人作为受访者（嘉宾）的内容和其他同名者的内容。"
-    search_prompt += "\n\n请用以下格式整理每一条采访记录："
-    search_prompt += "\n\n## 采访 N：[标题]"
-    search_prompt += "\n- **链接**：[完整URL]"
-    search_prompt += "\n- **来源**：[媒体/平台名称]"
-    search_prompt += "\n- **日期**：[发布日期]"
-    search_prompt += "\n- **摘要**：[2-3句话概括采访核心内容]"
-    search_prompt += "\n\n请确保每条记录都包含完整的URL链接。最后汇总发现了多少条采访记录。"
+    search_prompt += """
+
+请尽可能全面地搜索此人接受过的采访和访谈，覆盖以下类型：
+- 文字采访稿、深度对话
+- 视频访谈、播客节目
+- 演讲、公开发言
+- 新闻报道中的引述
+
+请用多个不同的搜索关键词组合来搜索（如：姓名+采访、姓名+对话、姓名+访谈、姓名+演讲等），确保覆盖面足够广。
+
+注意区分此人作为受访者的内容和其他同名者的内容。
+
+请严格按以下格式整理每一条采访记录：
+
+## 采访 1：[标题]
+- **链接**：[完整URL，必须以 http:// 或 https:// 开头]
+- **来源**：[媒体/平台名称]
+- **日期**：[发布日期]
+- **摘要**：[2-3句话概括采访核心内容]
+
+## 采访 2：[标题]
+...
+
+每条记录必须包含完整的可点击URL链接。最后汇总发现了多少条采访记录。"""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -355,55 +372,57 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
         response = client.messages.create(
             model="claude-opus-4-20250514",
             max_tokens=8096,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 20}],
             messages=[{"role": "user", "content": search_prompt}],
         )
 
+        # 提取文本
         result_text = ""
-        search_results = []
-
-        # 记录所有 block 类型用于调试
-        block_types = [block.type for block in response.content]
-        logger.info(f"嘉宾搜索响应 block 类型: {block_types}")
-
-        # 提取文本和搜索结果 URL
         for block in response.content:
             if block.type == "text":
                 result_text += block.text
-            else:
-                # 尝试从各种 block 类型中提取搜索结果
-                # 记录非 text block 的结构
-                logger.info(f"非文本 block: type={block.type}, attrs={[a for a in dir(block) if not a.startswith('_')]}")
 
-                # web_search_tool_result 类型
-                results_list = getattr(block, "search_results", None)
-                if not results_list:
-                    # 可能嵌套在 content 中
-                    block_content = getattr(block, "content", None)
-                    if isinstance(block_content, list):
-                        for item in block_content:
-                            results_list_inner = getattr(item, "search_results", None)
-                            if results_list_inner:
-                                results_list = results_list_inner
-                                break
+        # 从文本中解析结构化的采访记录（标题+链接+摘要）
+        search_results = []
+        # 按 ## 采访 分割
+        sections = re.split(r'##\s*采访\s*\d+[：:]\s*', result_text)
+        for section in sections[1:]:  # 跳过第一段（前言）
+            lines = section.strip().split('\n')
+            title = lines[0].strip() if lines else ""
+            url = ""
+            snippet = ""
+            for line in lines:
+                # 提取链接
+                url_match = re.search(r'https?://[^\s\)）\]」]+', line)
+                if url_match and not url:
+                    url = url_match.group(0).rstrip('.,;:')
+                # 提取摘要
+                if '摘要' in line and '：' in line:
+                    snippet = line.split('：', 1)[1].strip()
+                elif '摘要' in line and ':' in line:
+                    snippet = line.split(':', 1)[1].strip()
+            if url:
+                search_results.append({"url": url, "title": title, "snippet": snippet})
 
-                if results_list:
-                    for sr in results_list:
-                        url = getattr(sr, "url", "") or (sr.get("url", "") if isinstance(sr, dict) else "")
-                        title = getattr(sr, "title", "") or (sr.get("title", "") if isinstance(sr, dict) else "")
-                        snippet = getattr(sr, "snippet", "") or getattr(sr, "encrypted_content", "") or (sr.get("snippet", "") if isinstance(sr, dict) else "")
-                        if url:
-                            search_results.append({"url": url, "title": title, "snippet": snippet})
+        # 如果结构化解析没提取到，降级用正则提取所有 URL
+        if not search_results:
+            urls = re.findall(r'https?://[^\s\)）\]」]+', result_text)
+            seen = set()
+            for u in urls:
+                u = u.rstrip('.,;:')
+                if u not in seen:
+                    seen.add(u)
+                    search_results.append({"url": u, "title": "", "snippet": ""})
 
-        # 对搜索结果按 URL 去重
+        # 去重
         seen_urls = set()
         unique_results = []
         for sr in search_results:
-            if sr["url"] and sr["url"] not in seen_urls:
+            if sr["url"] not in seen_urls:
                 seen_urls.add(sr["url"])
                 unique_results.append(sr)
 
-        logger.info(f"嘉宾搜索完成: {guest_name}, 文本长度={len(result_text)}, 原始搜索结果={len(search_results)}条, 去重后={len(unique_results)}条")
+        logger.info(f"嘉宾搜索完成: {guest_name}, 文本{len(result_text)}字, 提取{len(unique_results)}条链接")
 
         return {
             "summary": result_text,
