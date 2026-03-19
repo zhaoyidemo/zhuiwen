@@ -220,8 +220,7 @@ async def guest_chat(guest_id: int, body: dict, db: AsyncSession = Depends(get_d
     if not guest:
         raise HTTPException(status_code=404, detail="嘉宾不存在")
 
-    materials = await db_service.get_guest_materials(db, guest_id)
     analyses = await db_service.get_guest_analyses(db, guest_id)
 
-    reply = await ai_service.guest_chat(guest["name"], materials, analyses, message)
+    reply = await ai_service.guest_chat(guest["name"], analyses, message)
     return {"reply": reply}

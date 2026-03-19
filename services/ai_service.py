@@ -396,11 +396,10 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
 
     base_instruction = f"请搜索关于「{guest_name}」的公开资料。{desc_hint}\n\n搜索策略：\n{search_strategy}\n"
 
-    # 三轮搜索，不同角度
+    # 两轮搜索，不同角度
     search_rounds = [
-        f"{base_instruction}\n本轮重点：深度采访、专访文章、对话记录。\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话。{output_format}",
-        f"{base_instruction}\n本轮重点：视频访谈、播客节目、公开演讲。\n搜索关键词建议：{guest_name} 访谈、{guest_name} 播客、{guest_name} 演讲。{output_format}",
-        f"{base_instruction}\n本轮重点：观点评论、深度报道、人物特写。\n搜索关键词建议：{guest_name} 观点、{guest_name} 评论、{guest_name} 报道、{guest_name} 人物。{output_format}",
+        f"{base_instruction}\n本轮重点：深度采访、专访文章、对话记录、播客节目。\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话、{guest_name} 播客。{output_format}",
+        f"{base_instruction}\n本轮重点：演讲发言、观点评论、深度报道、人物特写。\n搜索关键词建议：{guest_name} 演讲、{guest_name} 观点、{guest_name} 报道、{guest_name} 人物。{output_format}",
     ]
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -411,7 +410,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
     for i, prompt in enumerate(search_rounds, 1):
         try:
             response = client.messages.create(
-                model="claude-opus-4-20250514",
+                model="claude-sonnet-4-20250514",
                 max_tokens=8096,
                 tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
                 messages=[{"role": "user", "content": prompt}],
@@ -508,28 +507,31 @@ async def analyze_guest(
     prompt_name = type_to_prompt_name.get(analysis_type, "嘉宾研究报告")
     system_prompt = custom_prompt or DEFAULT_PROMPTS.get(prompt_name, "")
 
-    # 构建上下文：素材全文
-    materials_text = _format_materials_context(guest_name, materials)
-
-    # 递进式：采访策划时，包含研究报告作为前序分析
-    prior_text = ""
-    if prior_analyses:
+    if analysis_type == "interview" and prior_analyses:
+        # 采访策划：只送研究报告 + 素材标题列表（不送全文，省 token）
+        prior_text = ""
         for pa in prior_analyses:
-            pa_type = pa.get("analysis_type", "")
             pa_result = pa.get("content", {}).get("result", "")
             if pa_result:
-                label = type_to_prompt_name.get(pa_type, pa_type)
-                prior_text += f"\n\n---\n# 前序分析：{label}\n{pa_result}\n"
+                prior_text += f"\n{pa_result}\n"
 
-    if prior_text:
-        user_text = f"{prior_text}\n\n---\n# 原始素材\n{materials_text}\n\n请基于前序分析结论和原始素材进行分析。前序分析已覆盖的内容不要重复，在其基础上深入你的部分。"
+        # 只列出素材标题和链接，不含正文
+        material_index = [f"# 嘉宾：{guest_name}\n\n## 素材索引"]
+        for i, m in enumerate(materials, 1):
+            status_tag = {"verified": "[已验证]", "unverified": "[未验证]", "failed": "[失败]"}.get(m.get("status", ""), "")
+            material_index.append(f"{i}. {m.get('title', '(无标题)')} {status_tag} - {m.get('url', '')}")
+        material_index_text = "\n".join(material_index)
+
+        user_text = f"# 研究报告\n{prior_text}\n\n---\n{material_index_text}\n\n请基于研究报告设计采访策划方案。研究报告已覆盖的内容不要重复。"
     else:
+        # 研究报告：送素材全文
+        materials_text = _format_materials_context(guest_name, materials)
         user_text = f"{materials_text}\n请根据以上资料进行分析。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = client.messages.create(
-            model="claude-opus-4-20250514",
+            model="claude-sonnet-4-20250514",
             max_tokens=8096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
@@ -546,14 +548,12 @@ async def analyze_guest(
     }
 
 
-async def guest_chat(guest_name: str, materials: list[dict], analyses: list[dict], user_message: str) -> str:
+async def guest_chat(guest_name: str, analyses: list[dict], user_message: str) -> str:
     """对话预演：AI 扮演嘉宾进行模拟对话"""
     if not settings.ANTHROPIC_API_KEY:
         return "错误：ANTHROPIC_API_KEY 未配置"
 
-    # 构建嘉宾人设
-    materials_text = _format_materials_context(guest_name, materials)
-
+    # 构建嘉宾人设：只用分析结果，不送素材全文（省 token）
     analyses_text = ""
     for a in analyses:
         result = a.get("content", {}).get("result", "")
@@ -562,7 +562,7 @@ async def guest_chat(guest_name: str, materials: list[dict], analyses: list[dict
 
     system_prompt = f"""你现在扮演「{guest_name}」，正在接受「继续追问」节目的采访。
 
-请根据以下资料还原此人的说话风格、观点立场和思维方式来回答问题：
+请根据以下研究资料还原此人的说话风格、观点立场和思维方式来回答问题：
 - 用此人惯用的表达方式和语气
 - 基于此人已知的观点和立场来回应
 - 遇到敏感问题时，模拟此人可能的回避或应对方式
@@ -570,14 +570,12 @@ async def guest_chat(guest_name: str, materials: list[dict], analyses: list[dict
 
 {analyses_text}
 
-{materials_text}
-
 请始终保持角色，用第一人称回答。回答要自然、有深度，像真实的采访对话。"""
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = client.messages.create(
-            model="claude-opus-4-20250514",
+            model="claude-sonnet-4-20250514",
             max_tokens=2048,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
