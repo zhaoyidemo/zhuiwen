@@ -61,14 +61,26 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
         try:
             result = await ai_service.guest_web_search(guest_name, guest_desc)
             async with async_session() as session:
+                # 保存各条搜索结果为独立素材（带链接和标题）
+                for sr in result.get("search_results", []):
+                    if sr.get("url"):
+                        await db_service.add_guest_material(session, guest_id, {
+                            "type": "search_result",
+                            "platform": "网页",
+                            "url": sr["url"],
+                            "title": sr.get("title", ""),
+                            "summary": sr.get("snippet", ""),
+                            "raw_data": sr,
+                        })
+                # 保存 AI 汇总分析
                 if result.get("summary"):
                     await db_service.add_guest_material(session, guest_id, {
                         "type": "search_result",
-                        "title": f"网络搜索汇总 - {guest_name}",
+                        "title": f"AI 搜索汇总 - {guest_name}",
                         "content": result["summary"],
                         "raw_data": {"type": "search_summary", "created_at": result.get("created_at", "")},
                     })
-            logger.info(f"嘉宾搜索完成: {guest_name}")
+            logger.info(f"嘉宾搜索完成: {guest_name}, 搜索结果 {len(result.get('search_results', []))} 条")
         except Exception as e:
             logger.error(f"嘉宾后台搜索失败: {e}", exc_info=True)
 

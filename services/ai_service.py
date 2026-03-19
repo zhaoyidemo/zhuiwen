@@ -340,8 +340,14 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
     if guest_description:
         search_prompt += f"\n此人的身份信息：{guest_description}"
     search_prompt += "\n\n请尽可能全面地搜索此人接受过的采访和访谈，包括文字采访稿、视频访谈报道、播客对话等。"
-    search_prompt += "\n\n对每条搜索结果，请提供：标题、来源URL、日期（如有）、内容摘要。"
-    search_prompt += "\n最后用结构化的方式整理所有发现。注意区分此人作为受访者（嘉宾）的内容和其他同名者的内容。"
+    search_prompt += "\n注意区分此人作为受访者（嘉宾）的内容和其他同名者的内容。"
+    search_prompt += "\n\n请用以下格式整理每一条采访记录："
+    search_prompt += "\n\n## 采访 N：[标题]"
+    search_prompt += "\n- **链接**：[完整URL]"
+    search_prompt += "\n- **来源**：[媒体/平台名称]"
+    search_prompt += "\n- **日期**：[发布日期]"
+    search_prompt += "\n- **摘要**：[2-3句话概括采访核心内容]"
+    search_prompt += "\n\n请确保每条记录都包含完整的URL链接。最后汇总发现了多少条采访记录。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -355,13 +361,32 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
 
         result_text = ""
         search_results = []
+
+        # 提取文本和搜索结果 URL
         for block in response.content:
             if block.type == "text":
                 result_text += block.text
+            elif block.type == "web_search_tool_result":
+                for sr in getattr(block, "search_results", []):
+                    search_results.append({
+                        "url": getattr(sr, "url", ""),
+                        "title": getattr(sr, "title", ""),
+                        "snippet": getattr(sr, "encrypted_content", "") or getattr(sr, "snippet", ""),
+                    })
+
+        # 对搜索结果按 URL 去重
+        seen_urls = set()
+        unique_results = []
+        for sr in search_results:
+            if sr["url"] and sr["url"] not in seen_urls:
+                seen_urls.add(sr["url"])
+                unique_results.append(sr)
+
+        logger.info(f"嘉宾搜索完成: {guest_name}, 文本长度={len(result_text)}, 搜索结果={len(unique_results)}条")
 
         return {
             "summary": result_text,
-            "search_results": search_results,
+            "search_results": unique_results,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
     except Exception as e:
