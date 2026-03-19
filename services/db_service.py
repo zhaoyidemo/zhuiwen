@@ -295,8 +295,16 @@ async def delete_guest_material(db: AsyncSession, material_id: int) -> None:
     await db.commit()
 
 
-async def update_guest_material_content(db: AsyncSession, material_id: int, content: str) -> None:
-    await db.execute(update(GuestMaterial).where(GuestMaterial.id == material_id).values(content=content))
+async def update_guest_material_content(db: AsyncSession, material_id: int, content: str, status: str = "") -> None:
+    values = {"content": content}
+    if status:
+        values["status"] = status
+    await db.execute(update(GuestMaterial).where(GuestMaterial.id == material_id).values(**values))
+    await db.commit()
+
+
+async def update_guest_material_status(db: AsyncSession, material_id: int, status: str) -> None:
+    await db.execute(update(GuestMaterial).where(GuestMaterial.id == material_id).values(status=status))
     await db.commit()
 
 
@@ -408,6 +416,7 @@ def _material_to_dict(obj: GuestMaterial) -> dict:
         "summary": obj.summary,
         "content": obj.content,
         "raw_data": obj.raw_data,
+        "status": obj.status if hasattr(obj, "status") else "pending",
         "created_at": str(obj.created_at) if obj.created_at else "",
     }
 

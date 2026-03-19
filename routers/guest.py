@@ -72,7 +72,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
             search_results = result.get("search_results", [])
 
             async with async_session() as session:
-                # 保存各条搜索结果并抓取全文
+                # 保存各条搜索结果
                 saved_ids = []
                 for sr in search_results:
                     url = sr.get("url", "")
@@ -85,30 +85,45 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                         "title": sr.get("title", ""),
                         "summary": sr.get("snippet", ""),
                         "raw_data": sr,
+                        "status": "pending",
                     })
                     saved_ids.append((mat["id"], url))
 
-                # 保存 AI 汇总分析
+                # AI 汇总单独标记为 ai_summary 类型（分析时降权）
                 if result.get("summary"):
                     await db_service.add_guest_material(session, guest_id, {
-                        "type": "search_result",
-                        "title": f"AI 搜索汇总 - {guest_name}",
+                        "type": "ai_summary",
+                        "title": f"AI 搜索汇总 - {guest_name}（仅供参考，可能含未经证实信息）",
                         "content": result["summary"],
                         "raw_data": {"type": "search_summary", "created_at": result.get("created_at", "")},
+                        "status": "unverified",
                     })
 
-            logger.info(f"嘉宾搜索完成: {guest_name}, {len(saved_ids)} 条链接，开始抓取全文...")
+            logger.info(f"嘉宾搜索完成: {guest_name}, {len(saved_ids)} 条链接，开始抓取验证...")
 
-            # 逐个抓取链接全文并更新素材
-            fetched = 0
+            # 逐个抓取链接全文并验证相关性
+            verified = 0
+            failed = 0
+            unverified = 0
             for mat_id, url in saved_ids:
                 content = await fetch_page_text(url)
-                if content:
+                if not content:
+                    # 抓取失败 → 标记 failed
                     async with async_session() as session:
-                        await db_service.update_guest_material_content(session, mat_id, content)
-                    fetched += 1
+                        await db_service.update_guest_material_status(session, mat_id, "failed")
+                    failed += 1
+                elif guest_name in content:
+                    # 抓取成功 + 包含嘉宾姓名 → verified
+                    async with async_session() as session:
+                        await db_service.update_guest_material_content(session, mat_id, content, status="verified")
+                    verified += 1
+                else:
+                    # 抓取成功但不含嘉宾姓名 → unverified
+                    async with async_session() as session:
+                        await db_service.update_guest_material_content(session, mat_id, content, status="unverified")
+                    unverified += 1
 
-            logger.info(f"嘉宾全文抓取完成: {guest_name}, {fetched}/{len(saved_ids)} 条成功")
+            logger.info(f"嘉宾验证完成: {guest_name}, 验证通过{verified}, 未验证{unverified}, 抓取失败{failed}")
         except Exception as e:
             logger.error(f"嘉宾后台搜索失败: {e}", exc_info=True)
 

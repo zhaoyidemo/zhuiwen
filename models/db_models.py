@@ -136,6 +136,7 @@ class GuestMaterial(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     content: Mapped[str] = mapped_column(Text, default="")
     raw_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(32), default="pending")  # pending/verified/unverified/failed
     created_at: Mapped[datetime] = mapped_column(default=func.now())
 
     __table_args__ = (

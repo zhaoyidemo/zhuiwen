@@ -955,9 +955,12 @@
                       <div class="group flex items-start gap-3 p-3 cursor-pointer" @click="m._expanded = !m._expanded">
                         <div class="shrink-0 mt-0.5">
                           <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
-                            :class="m.type === 'search_result' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'"
-                            x-text="m.type === 'search_result' ? 'AI搜索' : (m.platform || '链接')"></span>
-                          <span x-show="m.content" class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-600 ml-1">已抓取</span>
+                            :class="{'bg-blue-100 text-blue-600': m.type === 'search_result', 'bg-yellow-100 text-yellow-700': m.type === 'ai_summary', 'bg-green-100 text-green-600': m.type === 'manual_link'}"
+                            x-text="m.type === 'ai_summary' ? 'AI汇总' : m.type === 'search_result' ? '搜索' : (m.platform || '链接')"></span>
+                          <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ml-1"
+                            :class="{'bg-emerald-100 text-emerald-600': m.status === 'verified', 'bg-yellow-100 text-yellow-700': m.status === 'unverified', 'bg-red-100 text-red-500': m.status === 'failed', 'bg-gray-100 text-gray-400': !m.status || m.status === 'pending'}"
+                            x-show="m.status && m.status !== 'pending'"
+                            x-text="{'verified':'已验证','unverified':'未验证','failed':'失败'}[m.status] || ''"></span>
                         </div>
                         <div class="flex-1 min-w-0">
                           <p class="text-sm text-gray-800" :class="m._expanded ? '' : 'truncate'" x-text="m.title || m.url || '(无标题)'"></p>

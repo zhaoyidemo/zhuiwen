@@ -66,6 +66,7 @@ async def init_db():
             ("accounts", "xingtu_data", "JSONB DEFAULT '{}'::jsonb"),
             ("accounts", "xingtu_updated_at", "VARCHAR(64) DEFAULT ''"),
             ("video_favorites", "first5s_analysis", "JSONB DEFAULT '{}'::jsonb"),
+            ("guest_materials", "status", "VARCHAR(32) DEFAULT 'pending'"),
         ]
         for table, col_name, col_def in migrations:
             try:

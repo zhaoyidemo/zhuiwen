@@ -117,7 +117,11 @@ DEFAULT_PROMPTS = {
 - 公众对此人有哪些争议？
 - 这些矛盾和争议是天然的追问素材
 
-请基于素材原文分析，不要臆测。每个发现都要有出处支撑。""",
+重要规则：
+- 只引用素材原文中明确存在的信息，不要用你自己的知识补充
+- 每个观点、引语必须标注来源素材编号（如「资料3」）
+- 如果某条信息只出现在标注为"未验证"的素材中，请注明"[未验证]"
+- 如果素材中找不到支撑，明确标注"[未经证实]"而不是自行编造""",
 
     "采访策划方案": """你是「继续追问」节目的总编导。请根据嘉宾研究报告和原始素材，设计一份完整的采访策划方案。
 
@@ -153,6 +157,12 @@ DEFAULT_PROMPTS = {
 ## 六、风险预案
 - 可能的敏感话题及应对方式
 - 嘉宾可能的回避策略及破解方式
+
+重要规则：
+- 引用嘉宾原话时，必须是素材中实际存在的引语，标注来源素材编号
+- 不要编造嘉宾没说过的话或没做过的事
+- 追问武器库中的引语必须来自素材原文
+- 对于标注为"未验证"的信息，使用时需注明
 
 请让每个问题都有明确的"追问路径"，这是「继续追问」的核心价值。""",
 }
@@ -442,7 +452,21 @@ def _format_materials_context(guest_name: str, materials: list[dict], max_chars:
     total_chars = 0
 
     for i, m in enumerate(materials, 1):
-        entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')}"]
+        status = m.get("status", "pending")
+        mat_type = m.get("type", "")
+
+        # ai_summary 类型降权标注
+        if mat_type == "ai_summary":
+            entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')} [AI生成，仅供参考]"]
+        elif status == "verified":
+            entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')} [已验证]"]
+        elif status == "failed":
+            entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')} [抓取失败，信息未验证]"]
+        elif status == "unverified":
+            entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')} [未验证]"]
+        else:
+            entry_lines = [f"## 资料 {i}：{m.get('title', '(无标题)')}"]
+
         if m.get("platform"):
             entry_lines.append(f"- 平台：{m['platform']}")
         if m.get("url"):
@@ -451,7 +475,6 @@ def _format_materials_context(guest_name: str, materials: list[dict], max_chars:
             entry_lines.append(f"- 摘要：{m['summary']}")
         if m.get("content"):
             content = m["content"]
-            # 单篇内容最多 5000 字
             if len(content) > 5000:
                 content = content[:5000] + "\n[内容已截断]"
             entry_lines.append(f"- 内容：{content}")
