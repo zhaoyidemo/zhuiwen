@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services import db_service, ai_service
+from services.web_fetcher import fetch_page_text
 from database import get_db, async_session
 
 logger = logging.getLogger(__name__)
@@ -60,18 +61,25 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
     async def _bg_search():
         try:
             result = await ai_service.guest_web_search(guest_name, guest_desc)
+            search_results = result.get("search_results", [])
+
             async with async_session() as session:
-                # 保存各条搜索结果为独立素材（带链接和标题）
-                for sr in result.get("search_results", []):
-                    if sr.get("url"):
-                        await db_service.add_guest_material(session, guest_id, {
-                            "type": "search_result",
-                            "platform": "网页",
-                            "url": sr["url"],
-                            "title": sr.get("title", ""),
-                            "summary": sr.get("snippet", ""),
-                            "raw_data": sr,
-                        })
+                # 保存各条搜索结果并抓取全文
+                saved_ids = []
+                for sr in search_results:
+                    url = sr.get("url", "")
+                    if not url:
+                        continue
+                    mat = await db_service.add_guest_material(session, guest_id, {
+                        "type": "search_result",
+                        "platform": "网页",
+                        "url": url,
+                        "title": sr.get("title", ""),
+                        "summary": sr.get("snippet", ""),
+                        "raw_data": sr,
+                    })
+                    saved_ids.append((mat["id"], url))
+
                 # 保存 AI 汇总分析
                 if result.get("summary"):
                     await db_service.add_guest_material(session, guest_id, {
@@ -80,7 +88,19 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                         "content": result["summary"],
                         "raw_data": {"type": "search_summary", "created_at": result.get("created_at", "")},
                     })
-            logger.info(f"嘉宾搜索完成: {guest_name}, 搜索结果 {len(result.get('search_results', []))} 条")
+
+            logger.info(f"嘉宾搜索完成: {guest_name}, {len(saved_ids)} 条链接，开始抓取全文...")
+
+            # 逐个抓取链接全文并更新素材
+            fetched = 0
+            for mat_id, url in saved_ids:
+                content = await fetch_page_text(url)
+                if content:
+                    async with async_session() as session:
+                        await db_service.update_guest_material_content(session, mat_id, content)
+                    fetched += 1
+
+            logger.info(f"嘉宾全文抓取完成: {guest_name}, {fetched}/{len(saved_ids)} 条成功")
         except Exception as e:
             logger.error(f"嘉宾后台搜索失败: {e}", exc_info=True)
 

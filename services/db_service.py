@@ -295,6 +295,11 @@ async def delete_guest_material(db: AsyncSession, material_id: int) -> None:
     await db.commit()
 
 
+async def update_guest_material_content(db: AsyncSession, material_id: int, content: str) -> None:
+    await db.execute(update(GuestMaterial).where(GuestMaterial.id == material_id).values(content=content))
+    await db.commit()
+
+
 async def save_guest_analysis(db: AsyncSession, guest_id: int, analysis_type: str, content: dict) -> dict:
     analysis = GuestAnalysis(guest_id=guest_id, analysis_type=analysis_type, content=content)
     db.add(analysis)
