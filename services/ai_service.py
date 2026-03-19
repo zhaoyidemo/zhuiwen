@@ -74,6 +74,90 @@ DEFAULT_PROMPTS = {
 请用结构化的方式输出，每个发现都要有数据或评论支撑。""",
 
     "前5秒分析": FIRST_5S_PROMPT,
+
+    "嘉宾整理归档": """你是一位专业的媒体研究员。请根据提供的嘉宾资料，整理出结构化的嘉宾档案。
+
+请从以下维度整理：
+
+## 一、基本信息
+- 姓名、职务、所属机构
+- 公开社交媒体账号
+
+## 二、职业经历
+- 按时间线梳理主要经历
+
+## 三、核心观点与成就
+- 代表性言论、著作、项目
+
+## 四、媒体曝光
+- 近期公开发言、采访、活动
+
+## 五、资料可信度评估
+- 对各项信息的来源和可靠性进行说明
+
+请用结构化方式输出，每条信息标注来源。""",
+
+    "嘉宾人物画像": """你是一位深度人物分析专家。请根据嘉宾资料，绘制一份立体的人物画像。
+
+请从以下维度分析：
+
+## 一、身份定位
+- 在行业中的角色和影响力
+
+## 二、思维模式与价值观
+- 从公开言论中提炼核心观点和思维方式
+
+## 三、传播风格
+- 说话风格、内容偏好、常用表达
+
+## 四、受众画像
+- 其粉丝/关注者的特征
+
+## 五、合作契合度分析
+- 与"继续追问"节目风格的匹配度
+- 潜在话题方向
+
+请深入分析，结论要有资料支撑。""",
+
+    "嘉宾选题策划": """你是一位资深的内容策划专家，擅长策划高质量的对话类节目选题。
+
+请根据嘉宾资料，策划3-5个选题方向：
+
+每个选题包含：
+## 选题 N：[选题名称]
+- **核心话题**：一句话概括
+- **话题价值**：为什么观众会感兴趣？
+- **预期爆点**：哪些观点/话题可能引发讨论？
+- **关键问题**：3-5个核心提问
+- **内容结构**：对话的起承转合设计
+- **传播预判**：预估哪些片段适合短视频二创
+
+请从观众价值出发，策划有深度且有传播力的选题。""",
+
+    "嘉宾采访准备": """你是一位资深的访谈记者和节目编导。请根据嘉宾资料，准备一份详细的采访提纲。
+
+请包含以下部分：
+
+## 一、嘉宾背景速览
+- 关键信息提要（3-5条）
+
+## 二、破冰话题
+- 2-3个轻松的开场话题
+
+## 三、核心问题清单
+- 按话题分组，每组3-5个递进式问题
+- 标注"必问"和"选问"
+
+## 四、敏感话题预案
+- 可能的敏感点及应对方式
+
+## 五、追问策略
+- 根据嘉宾说话风格，准备追问技巧
+
+## 六、金句预判
+- 预判哪些话题可能产生金句
+
+请确保问题有深度，同时考虑节目的传播效果。""",
 }
 
 
@@ -243,5 +327,97 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
 
     return {
         "result": result_text,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+async def guest_web_search(guest_name: str, guest_description: str = "") -> dict:
+    """使用 Claude web search 搜索嘉宾采访资料并整理"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
+
+    search_prompt = f"请搜索关于「{guest_name}」的公开采访、访谈、对话记录。"
+    if guest_description:
+        search_prompt += f"\n此人的身份信息：{guest_description}"
+    search_prompt += "\n\n请尽可能全面地搜索此人接受过的采访和访谈，包括文字采访稿、视频访谈报道、播客对话等。"
+    search_prompt += "\n\n对每条搜索结果，请提供：标题、来源URL、日期（如有）、内容摘要。"
+    search_prompt += "\n最后用结构化的方式整理所有发现。注意区分此人作为受访者（嘉宾）的内容和其他同名者的内容。"
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+    try:
+        response = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=8096,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
+            messages=[{"role": "user", "content": search_prompt}],
+        )
+
+        result_text = ""
+        search_results = []
+        for block in response.content:
+            if block.type == "text":
+                result_text += block.text
+
+        return {
+            "summary": result_text,
+            "search_results": search_results,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    except Exception as e:
+        logger.error(f"嘉宾搜索失败: {e}", exc_info=True)
+        return {"summary": f"搜索失败：{str(e)}", "search_results": []}
+
+
+async def analyze_guest(
+    guest_name: str,
+    materials: list[dict],
+    analysis_type: str,
+    custom_prompt: str = "",
+) -> dict:
+    """根据嘉宾资料进行 AI 分析"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    type_to_prompt_name = {
+        "archive": "嘉宾整理归档",
+        "portrait": "嘉宾人物画像",
+        "topic": "嘉宾选题策划",
+        "interview": "嘉宾采访准备",
+    }
+    prompt_name = type_to_prompt_name.get(analysis_type, "嘉宾整理归档")
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get(prompt_name, "")
+
+    context_lines = [f"# 嘉宾：{guest_name}\n"]
+    for i, m in enumerate(materials, 1):
+        context_lines.append(f"## 资料 {i}：{m.get('title', '(无标题)')}")
+        if m.get("platform"):
+            context_lines.append(f"- 平台：{m['platform']}")
+        if m.get("url"):
+            context_lines.append(f"- 来源：{m['url']}")
+        if m.get("summary"):
+            context_lines.append(f"- 摘要：{m['summary']}")
+        if m.get("content"):
+            context_lines.append(f"- 内容：{m['content']}")
+        context_lines.append("")
+
+    user_text = "\n".join(context_lines) + "\n请根据以上资料进行分析。"
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_text}],
+        )
+        result_text = message.content[0].text
+    except Exception as e:
+        logger.error(f"嘉宾分析失败: {e}", exc_info=True)
+        result_text = f"分析失败：{str(e)}"
+
+    return {
+        "result": result_text,
+        "prompt_used": prompt_name,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }

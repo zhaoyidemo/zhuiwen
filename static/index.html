@@ -71,6 +71,11 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             爆款收藏 <span x-show="favoriteVideos.length" class="ml-auto text-[10px] bg-amber-600/30 text-amber-400 px-1.5 py-0.5 rounded" x-text="favoriteVideos.length"></span>
           </button>
+          <button @click="tab='guest'; if (!guests.length) loadGuests()" :class="tab==='guest' ? 'bg-green-600/20 text-green-400' : 'hover:bg-gray-800 text-gray-400'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            嘉宾研究 <span x-show="guests.length" class="ml-auto text-[10px] bg-green-600/30 text-green-400 px-1.5 py-0.5 rounded" x-text="guests.length"></span>
+          </button>
           <button class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full text-left text-gray-600 cursor-default">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             作战仪表盘 <span class="ml-auto text-[10px] bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded">V2</span>
@@ -850,6 +855,198 @@
           </div>
         </div>
 
+        <!-- 嘉宾研究 -->
+        <div x-show="tab==='guest'" class="p-6 max-w-5xl mx-auto">
+          <h2 class="text-2xl font-bold text-gray-800 mb-1">嘉宾研究</h2>
+          <p class="text-sm text-gray-500 mb-6">搜索采访记录、整理归档、策划选题</p>
+
+          <div x-show="guestError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm" x-text="guestError"></div>
+
+          <!-- 添加嘉宾 -->
+          <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+            <h3 class="text-sm font-medium text-gray-600 mb-3">添加嘉宾</h3>
+            <div class="flex gap-3">
+              <input type="text" x-model="newGuestName" placeholder="嘉宾姓名" @keydown.enter="createGuest"
+                class="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-green-500">
+              <input type="text" x-model="newGuestDesc" placeholder="身份描述（如：小米产品经理）" @keydown.enter="createGuest"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-green-500">
+              <button @click="createGuest" :disabled="!newGuestName.trim() || addingGuest"
+                class="px-5 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium transition-colors">
+                <span x-text="addingGuest ? '添加中...' : '添加'"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex gap-6">
+            <!-- 嘉宾列表 -->
+            <div class="w-64 shrink-0">
+              <h3 class="text-sm font-medium text-gray-500 mb-3">嘉宾档案 (<span x-text="guests.length"></span>)</h3>
+              <div class="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+                <template x-for="g in guests" :key="g.id">
+                  <div @click="selectGuest(g)" class="group flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
+                    :class="selectedGuest?.id === g.id ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:shadow-md'">
+                    <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-sm font-bold shrink-0"
+                      x-text="g.name.charAt(0)"></div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-800 truncate" x-text="g.name"></p>
+                      <p class="text-xs text-gray-400 truncate" x-text="g.description || '未添加描述'"></p>
+                    </div>
+                    <button @click.stop="deleteGuest(g)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                  </div>
+                </template>
+                <p x-show="!guests.length" class="text-sm text-gray-400 text-center py-8">还没有嘉宾，添加一位开始研究</p>
+              </div>
+            </div>
+
+            <!-- 嘉宾详情 -->
+            <div class="flex-1 min-w-0" x-show="selectedGuest">
+              <!-- 嘉宾基本信息 -->
+              <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-lg font-bold"
+                    x-text="selectedGuest?.name?.charAt(0) || ''"></div>
+                  <div>
+                    <h3 class="text-lg font-bold text-gray-800" x-text="selectedGuest?.name"></h3>
+                    <p class="text-sm text-gray-500" x-text="selectedGuest?.description || '未添加描述'"></p>
+                  </div>
+                </div>
+
+                <!-- 搜索 + 添加素材 -->
+                <div class="flex gap-3 mb-3">
+                  <button @click="searchGuest" :disabled="guestSearching"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                    <svg x-show="!guestSearching" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg x-show="guestSearching" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="guestSearching ? '搜索中...' : 'AI 搜索采访记录'"></span>
+                  </button>
+                </div>
+
+                <!-- 手动添加链接 -->
+                <div class="flex gap-2 items-center">
+                  <select x-model="newMaterialPlatform" class="w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-green-500">
+                    <option value="">平台</option>
+                    <option value="抖音">抖音</option>
+                    <option value="B站">B站</option>
+                    <option value="YouTube">YouTube</option>
+                    <option value="小宇宙">小宇宙</option>
+                    <option value="网页">网页</option>
+                    <option value="其他">其他</option>
+                  </select>
+                  <input type="text" x-model="newMaterialTitle" placeholder="标题（选填）"
+                    class="w-32 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-green-500">
+                  <input type="text" x-model="newMaterialUrl" placeholder="粘贴采访链接" @keydown.enter="addGuestMaterial"
+                    class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-green-500">
+                  <button @click="addGuestMaterial" :disabled="!newMaterialUrl.trim()"
+                    class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-300 text-gray-600 rounded-lg text-xs font-medium transition-colors">
+                    添加
+                  </button>
+                </div>
+              </div>
+
+              <!-- 素材列表 -->
+              <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4" x-show="guestMaterials.length">
+                <h4 class="text-sm font-medium text-gray-600 mb-3">素材资料 (<span x-text="guestMaterials.length"></span>)</h4>
+                <div class="space-y-2 max-h-60 overflow-y-auto">
+                  <template x-for="m in guestMaterials" :key="m.id">
+                    <div class="group flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                      <div class="shrink-0 mt-0.5">
+                        <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
+                          :class="m.type === 'search_result' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'"
+                          x-text="m.type === 'search_result' ? 'AI搜索' : (m.platform || '链接')"></span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-800 truncate" x-text="m.title || m.url || '(无标题)'"></p>
+                        <p x-show="m.url" class="text-xs text-blue-500 truncate mt-0.5">
+                          <a :href="m.url" target="_blank" x-text="m.url" class="hover:underline"></a>
+                        </p>
+                        <p x-show="m.summary" class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="m.summary"></p>
+                      </div>
+                      <button @click="deleteGuestMaterial(m.id)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 shrink-0 transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- AI 分析按钮 -->
+              <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
+                <h4 class="text-sm font-medium text-gray-600 mb-3">AI 深度分析</h4>
+                <p x-show="!guestMaterials.length" class="text-xs text-gray-400 mb-3">请先搜索或添加素材后再进行分析</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <button @click="runGuestAnalysis('archive')" :disabled="guestAnalyzing || !guestMaterials.length"
+                    class="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestAnalyzing === 'archive' ? 'bg-green-50 border-green-300 text-green-700' : 'border-gray-200 hover:border-green-300 hover:bg-green-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span x-text="guestAnalyzing === 'archive' ? '分析中...' : '整理归档'"></span>
+                  </button>
+                  <button @click="runGuestAnalysis('portrait')" :disabled="guestAnalyzing || !guestMaterials.length"
+                    class="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestAnalyzing === 'portrait' ? 'bg-purple-50 border-purple-300 text-purple-700' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <span x-text="guestAnalyzing === 'portrait' ? '分析中...' : '人物画像'"></span>
+                  </button>
+                  <button @click="runGuestAnalysis('topic')" :disabled="guestAnalyzing || !guestMaterials.length"
+                    class="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestAnalyzing === 'topic' ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-gray-200 hover:border-amber-300 hover:bg-amber-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <span x-text="guestAnalyzing === 'topic' ? '分析中...' : '选题策划'"></span>
+                  </button>
+                  <button @click="runGuestAnalysis('interview')" :disabled="guestAnalyzing || !guestMaterials.length"
+                    class="flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestAnalyzing === 'interview' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    <span x-text="guestAnalyzing === 'interview' ? '分析中...' : '采访准备'"></span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 分析结果 -->
+              <div x-show="guestAnalyses.length" class="space-y-3">
+                <h4 class="text-sm font-medium text-gray-600">分析结果 (<span x-text="guestAnalyses.length"></span>)</h4>
+                <template x-for="a in guestAnalyses" :key="a.id">
+                  <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    <div @click="guestAnalysisExpanded = guestAnalysisExpanded === a.id ? null : a.id"
+                      class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                      <div class="flex items-center gap-3">
+                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                          :class="{
+                            'bg-green-100 text-green-700': a.analysis_type === 'archive',
+                            'bg-purple-100 text-purple-700': a.analysis_type === 'portrait',
+                            'bg-amber-100 text-amber-700': a.analysis_type === 'topic',
+                            'bg-blue-100 text-blue-700': a.analysis_type === 'interview',
+                          }"
+                          x-text="guestAnalysisLabel(a.analysis_type)"></span>
+                        <span class="text-xs text-gray-400" x-text="a.content?.created_at || a.created_at"></span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button @click.stop="deleteGuestAnalysis(a.id)" class="text-gray-300 hover:text-red-500 transition-colors">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" :class="guestAnalysisExpanded === a.id ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                      </div>
+                    </div>
+                    <div x-show="guestAnalysisExpanded === a.id" class="px-5 pb-5 border-t border-gray-100">
+                      <div class="prose prose-sm max-w-none mt-3 text-sm text-gray-700 leading-relaxed"
+                        x-html="renderMarkdown(a.content?.result || '')"></div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- 未选中嘉宾时的占位 -->
+            <div class="flex-1 flex items-center justify-center" x-show="!selectedGuest">
+              <div class="text-center text-gray-400">
+                <svg class="w-16 h-16 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <p class="text-sm">选择左侧嘉宾开始研究</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 提示词管理 -->
         <div x-show="tab==='prompts'" class="p-6 max-w-3xl mx-auto">
           <h2 class="text-2xl font-bold text-gray-800 mb-1">提示词管理</h2>
@@ -938,6 +1135,22 @@ function app() {
       price:    { loading: false, failed: false, cached_at: '' },
     },
 
+    // 嘉宾研究
+    guests: [],
+    selectedGuest: null,
+    guestMaterials: [],
+    guestAnalyses: [],
+    newGuestName: '',
+    newGuestDesc: '',
+    addingGuest: false,
+    guestSearching: false,
+    guestAnalyzing: null,
+    guestError: '',
+    newMaterialUrl: '',
+    newMaterialPlatform: '',
+    newMaterialTitle: '',
+    guestAnalysisExpanded: null,
+
     // 爆款收藏
     favoriteVideos: [],
     favoriteRefreshing: null,
@@ -973,14 +1186,16 @@ function app() {
     // 初始化：从数据库加载数据
     async initData() {
       try {
-        const [accRes, histRes, favRes] = await Promise.all([
+        const [accRes, histRes, favRes, guestRes] = await Promise.all([
           this.api('GET', '/account/list'),
           this.api('GET', '/video/history'),
           this.api('GET', '/favorite/list'),
+          this.api('GET', '/guest/list'),
         ]);
         this.accounts = accRes.accounts || [];
         this.videoHistory = (histRes.history || []).map(h => h.data || h);
         this.favoriteVideos = (favRes.favorites || []).map(f => ({ ...f.data, _fav_id: f.id, _fav_at: f.created_at, ai_analysis: f.ai_analysis || {}, first5s_analysis: f.first5s_analysis || {} }));
+        this.guests = guestRes.guests || [];
       } catch (e) { /* 静默失败 */ }
     },
 
@@ -1588,6 +1803,112 @@ function app() {
         }
       });
       return { net: gained - lost, gained, lost };
+    },
+
+    // 嘉宾研究
+    async loadGuests() {
+      try {
+        const res = await this.api('GET', '/guest/list');
+        this.guests = res.guests || [];
+      } catch (e) { /* ignore */ }
+    },
+    async createGuest() {
+      if (!this.newGuestName.trim() || this.addingGuest) return;
+      this.addingGuest = true; this.guestError = '';
+      try {
+        const guest = await this.api('POST', '/guest', { name: this.newGuestName.trim(), description: this.newGuestDesc.trim() });
+        this.guests.unshift(guest);
+        this.newGuestName = '';
+        this.newGuestDesc = '';
+      } catch (e) { this.guestError = e.message; }
+      this.addingGuest = false;
+    },
+    async deleteGuest(guest) {
+      if (!confirm('确定删除嘉宾「' + guest.name + '」及其所有资料？')) return;
+      try {
+        await this.api('DELETE', '/guest/' + guest.id);
+        this.guests = this.guests.filter(g => g.id !== guest.id);
+        if (this.selectedGuest?.id === guest.id) {
+          this.selectedGuest = null;
+          this.guestMaterials = [];
+          this.guestAnalyses = [];
+        }
+      } catch (e) { this.guestError = e.message; }
+    },
+    async selectGuest(guest) {
+      this.selectedGuest = guest;
+      this.guestError = '';
+      this.guestAnalysisExpanded = null;
+      await Promise.all([this.loadGuestMaterials(guest.id), this.loadGuestAnalyses(guest.id)]);
+    },
+    async loadGuestMaterials(guestId) {
+      try {
+        const res = await this.api('GET', '/guest/' + guestId + '/materials');
+        this.guestMaterials = res.materials || [];
+      } catch (e) { this.guestMaterials = []; }
+    },
+    async loadGuestAnalyses(guestId) {
+      try {
+        const res = await this.api('GET', '/guest/' + guestId + '/analyses');
+        this.guestAnalyses = res.analyses || [];
+      } catch (e) { this.guestAnalyses = []; }
+    },
+    async searchGuest() {
+      if (!this.selectedGuest || this.guestSearching) return;
+      this.guestSearching = true; this.guestError = '';
+      try {
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/search', {});
+        await this.loadGuestMaterials(this.selectedGuest.id);
+      } catch (e) { this.guestError = '搜索失败: ' + e.message; }
+      this.guestSearching = false;
+    },
+    async addGuestMaterial() {
+      if (!this.selectedGuest || !this.newMaterialUrl.trim()) return;
+      this.guestError = '';
+      try {
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/material', {
+          url: this.newMaterialUrl.trim(),
+          platform: this.newMaterialPlatform,
+          title: this.newMaterialTitle.trim(),
+        });
+        this.newMaterialUrl = '';
+        this.newMaterialPlatform = '';
+        this.newMaterialTitle = '';
+        await this.loadGuestMaterials(this.selectedGuest.id);
+      } catch (e) { this.guestError = e.message; }
+    },
+    async deleteGuestMaterial(mid) {
+      if (!this.selectedGuest) return;
+      try {
+        await this.api('DELETE', '/guest/' + this.selectedGuest.id + '/material/' + mid);
+        this.guestMaterials = this.guestMaterials.filter(m => m.id !== mid);
+      } catch (e) { /* ignore */ }
+    },
+    async runGuestAnalysis(type) {
+      if (!this.selectedGuest || this.guestAnalyzing) return;
+      this.guestAnalyzing = type; this.guestError = '';
+      try {
+        // 加载自定义提示词（如有）
+        if (!this.aiPrompts.length) await this.loadAiPrompts();
+        const typeNames = { archive: '嘉宾整理归档', portrait: '嘉宾人物画像', topic: '嘉宾选题策划', interview: '嘉宾采访准备' };
+        const p = this.aiPrompts.find(p => p.name === typeNames[type]);
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/analyze', {
+          analysis_type: type,
+          prompt: p?.content || '',
+        });
+        await this.loadGuestAnalyses(this.selectedGuest.id);
+      } catch (e) { this.guestError = '分析失败: ' + e.message; }
+      this.guestAnalyzing = null;
+    },
+    async deleteGuestAnalysis(aid) {
+      if (!this.selectedGuest) return;
+      try {
+        await this.api('DELETE', '/guest/' + this.selectedGuest.id + '/analysis/' + aid);
+        this.guestAnalyses = this.guestAnalyses.filter(a => a.id !== aid);
+      } catch (e) { /* ignore */ }
+    },
+    guestAnalysisLabel(type) {
+      return { archive: '整理归档', portrait: '人物画像', topic: '选题策划', interview: '采访准备' }[type] || type;
     },
 
     sortVideos() {

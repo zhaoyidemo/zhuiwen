@@ -112,3 +112,46 @@ class VideoHistory(Base):
     __table_args__ = (
         Index("ix_video_history_aweme_id", "aweme_id"),
     )
+
+
+class Guest(Base):
+    __tablename__ = "guests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
+
+
+class GuestMaterial(Base):
+    __tablename__ = "guest_materials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guest_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    type: Mapped[str] = mapped_column(String(32), default="search_result")
+    platform: Mapped[str] = mapped_column(String(64), default="")
+    url: Mapped[str] = mapped_column(Text, default="")
+    title: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    content: Mapped[str] = mapped_column(Text, default="")
+    raw_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+
+    __table_args__ = (
+        Index("ix_guest_materials_guest_id", "guest_id"),
+    )
+
+
+class GuestAnalysis(Base):
+    __tablename__ = "guest_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guest_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    content: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(default=func.now())
+
+    __table_args__ = (
+        Index("ix_guest_analyses_guest_id", "guest_id"),
+    )

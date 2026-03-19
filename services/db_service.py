@@ -3,7 +3,7 @@ import sqlalchemy
 from sqlalchemy import select, delete, update, func, case
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from models.db_models import Account, Video, VideoHistory, VideoFavorite, AiPrompt
+from models.db_models import Account, Video, VideoHistory, VideoFavorite, AiPrompt, Guest, GuestMaterial, GuestAnalysis
 
 ALLOWED_SORT_FIELDS = {
     "collect_rate", "engagement_rate", "create_time", "play_count",
@@ -247,6 +247,74 @@ async def save_ai_analysis(db: AsyncSession, aweme_id: str, analysis: dict, anal
     await db.commit()
 
 
+# ---- 嘉宾研究 ----
+
+async def create_guest(db: AsyncSession, name: str, description: str = "") -> dict:
+    guest = Guest(name=name, description=description)
+    db.add(guest)
+    await db.commit()
+    await db.refresh(guest)
+    return _guest_to_dict(guest)
+
+
+async def get_guests(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(Guest).order_by(Guest.created_at.desc()))
+    return [_guest_to_dict(g) for g in result.scalars().all()]
+
+
+async def get_guest(db: AsyncSession, guest_id: int) -> dict | None:
+    result = await db.execute(select(Guest).where(Guest.id == guest_id))
+    guest = result.scalars().first()
+    return _guest_to_dict(guest) if guest else None
+
+
+async def delete_guest(db: AsyncSession, guest_id: int) -> None:
+    await db.execute(delete(GuestAnalysis).where(GuestAnalysis.guest_id == guest_id))
+    await db.execute(delete(GuestMaterial).where(GuestMaterial.guest_id == guest_id))
+    await db.execute(delete(Guest).where(Guest.id == guest_id))
+    await db.commit()
+
+
+async def add_guest_material(db: AsyncSession, guest_id: int, material_data: dict) -> dict:
+    mat = GuestMaterial(guest_id=guest_id, **material_data)
+    db.add(mat)
+    await db.commit()
+    await db.refresh(mat)
+    return _material_to_dict(mat)
+
+
+async def get_guest_materials(db: AsyncSession, guest_id: int) -> list[dict]:
+    result = await db.execute(
+        select(GuestMaterial).where(GuestMaterial.guest_id == guest_id).order_by(GuestMaterial.created_at.desc())
+    )
+    return [_material_to_dict(m) for m in result.scalars().all()]
+
+
+async def delete_guest_material(db: AsyncSession, material_id: int) -> None:
+    await db.execute(delete(GuestMaterial).where(GuestMaterial.id == material_id))
+    await db.commit()
+
+
+async def save_guest_analysis(db: AsyncSession, guest_id: int, analysis_type: str, content: dict) -> dict:
+    analysis = GuestAnalysis(guest_id=guest_id, analysis_type=analysis_type, content=content)
+    db.add(analysis)
+    await db.commit()
+    await db.refresh(analysis)
+    return _analysis_to_dict(analysis)
+
+
+async def get_guest_analyses(db: AsyncSession, guest_id: int) -> list[dict]:
+    result = await db.execute(
+        select(GuestAnalysis).where(GuestAnalysis.guest_id == guest_id).order_by(GuestAnalysis.created_at.desc())
+    )
+    return [_analysis_to_dict(a) for a in result.scalars().all()]
+
+
+async def delete_guest_analysis(db: AsyncSession, analysis_id: int) -> None:
+    await db.execute(delete(GuestAnalysis).where(GuestAnalysis.id == analysis_id))
+    await db.commit()
+
+
 # ---- helpers ----
 
 def _account_to_dict(obj: Account) -> dict:
@@ -311,4 +379,39 @@ def _history_to_dict(obj: VideoHistory) -> dict:
         "data": obj.data,
         "created_at": str(obj.created_at) if obj.created_at else "",
         "updated_at": str(obj.updated_at) if obj.updated_at else "",
+    }
+
+
+def _guest_to_dict(obj: Guest) -> dict:
+    return {
+        "id": obj.id,
+        "name": obj.name,
+        "description": obj.description,
+        "created_at": str(obj.created_at) if obj.created_at else "",
+        "updated_at": str(obj.updated_at) if obj.updated_at else "",
+    }
+
+
+def _material_to_dict(obj: GuestMaterial) -> dict:
+    return {
+        "id": obj.id,
+        "guest_id": obj.guest_id,
+        "type": obj.type,
+        "platform": obj.platform,
+        "url": obj.url,
+        "title": obj.title,
+        "summary": obj.summary,
+        "content": obj.content,
+        "raw_data": obj.raw_data,
+        "created_at": str(obj.created_at) if obj.created_at else "",
+    }
+
+
+def _analysis_to_dict(obj: GuestAnalysis) -> dict:
+    return {
+        "id": obj.id,
+        "guest_id": obj.guest_id,
+        "analysis_type": obj.analysis_type,
+        "content": obj.content,
+        "created_at": str(obj.created_at) if obj.created_at else "",
     }
