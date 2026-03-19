@@ -948,24 +948,43 @@
               <!-- 素材列表 -->
               <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4" x-show="guestMaterials.length">
                 <h4 class="text-sm font-medium text-gray-600 mb-3">素材资料 (<span x-text="guestMaterials.length"></span>)</h4>
-                <div class="space-y-2 max-h-60 overflow-y-auto">
+                <div class="space-y-2 max-h-[500px] overflow-y-auto">
                   <template x-for="m in guestMaterials" :key="m.id">
-                    <div class="group flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                      <div class="shrink-0 mt-0.5">
-                        <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
-                          :class="m.type === 'search_result' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'"
-                          x-text="m.type === 'search_result' ? 'AI搜索' : (m.platform || '链接')"></span>
+                    <div class="bg-gray-50 rounded-xl overflow-hidden">
+                      <!-- 素材头部 -->
+                      <div class="group flex items-start gap-3 p-3 cursor-pointer" @click="m._expanded = !m._expanded">
+                        <div class="shrink-0 mt-0.5">
+                          <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
+                            :class="m.type === 'search_result' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'"
+                            x-text="m.type === 'search_result' ? 'AI搜索' : (m.platform || '链接')"></span>
+                          <span x-show="m.content" class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-600 ml-1">已抓取</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm text-gray-800" :class="m._expanded ? '' : 'truncate'" x-text="m.title || m.url || '(无标题)'"></p>
+                          <p x-show="m.url" class="text-xs text-blue-500 truncate mt-0.5">
+                            <a :href="m.url" target="_blank" @click.stop x-text="m.url" class="hover:underline"></a>
+                          </p>
+                          <p x-show="m.summary && !m._expanded" class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="m.summary"></p>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                          <button @click.stop="deleteGuestMaterial(m.id)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                          <svg class="w-4 h-4 text-gray-400 transition-transform" :class="m._expanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+                        </div>
                       </div>
-                      <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-800 truncate" x-text="m.title || m.url || '(无标题)'"></p>
-                        <p x-show="m.url" class="text-xs text-blue-500 truncate mt-0.5">
-                          <a :href="m.url" target="_blank" x-text="m.url" class="hover:underline"></a>
-                        </p>
-                        <p x-show="m.summary" class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="m.summary"></p>
+                      <!-- 展开：完整内容 -->
+                      <div x-show="m._expanded" class="px-3 pb-3 border-t border-gray-200">
+                        <div x-show="m.summary" class="mt-2">
+                          <p class="text-[10px] text-gray-400 mb-1">摘要</p>
+                          <p class="text-xs text-gray-600" x-text="m.summary"></p>
+                        </div>
+                        <div x-show="m.content" class="mt-2">
+                          <p class="text-[10px] text-gray-400 mb-1">正文内容</p>
+                          <div class="text-xs text-gray-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-line bg-white rounded-lg p-3 border border-gray-100" x-text="m.content"></div>
+                        </div>
+                        <p x-show="!m.content && !m.summary" class="text-xs text-gray-400 mt-2 italic">暂无内容（链接未抓取或抓取失败）</p>
                       </div>
-                      <button @click="deleteGuestMaterial(m.id)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 shrink-0 transition-all">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
                     </div>
                   </template>
                 </div>
