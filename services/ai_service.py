@@ -331,27 +331,47 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
     }
 
 
-async def guest_web_search(guest_name: str, guest_description: str = "") -> dict:
-    """使用 Claude web search 搜索嘉宾采访资料并整理"""
+def _parse_search_results(text: str) -> list[dict]:
+    """从 Claude 文本回复中解析采访记录（标题+链接+摘要）"""
     import re
 
+    results = []
+    sections = re.split(r'##\s*采访\s*\d+[：:]\s*', text)
+    for section in sections[1:]:
+        lines = section.strip().split('\n')
+        title = lines[0].strip() if lines else ""
+        url = ""
+        snippet = ""
+        for line in lines:
+            url_match = re.search(r'https?://[^\s\)）\]」]+', line)
+            if url_match and not url:
+                url = url_match.group(0).rstrip('.,;:')
+            if '摘要' in line and ('：' in line or ':' in line):
+                sep = '：' if '：' in line else ':'
+                snippet = line.split(sep, 1)[1].strip()
+        if url:
+            results.append({"url": url, "title": title, "snippet": snippet})
+
+    # 降级：正则提取所有 URL
+    if not results:
+        seen = set()
+        for u in re.findall(r'https?://[^\s\)）\]」]+', text):
+            u = u.rstrip('.,;:')
+            if u not in seen:
+                seen.add(u)
+                results.append({"url": u, "title": "", "snippet": ""})
+
+    return results
+
+
+async def guest_web_search(guest_name: str, guest_description: str = "") -> dict:
+    """多轮 Claude web search 搜索嘉宾采访资料，合并去重"""
     if not settings.ANTHROPIC_API_KEY:
         return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
 
-    search_prompt = f"请搜索关于「{guest_name}」的公开采访、访谈、对话记录。"
-    if guest_description:
-        search_prompt += f"\n此人的身份信息：{guest_description}"
-    search_prompt += """
+    desc_hint = f"\n此人的身份信息：{guest_description}" if guest_description else ""
 
-请尽可能全面地搜索此人接受过的采访和访谈，覆盖以下类型：
-- 文字采访稿、深度对话
-- 视频访谈、播客节目
-- 演讲、公开发言
-- 新闻报道中的引述
-
-请用多个不同的搜索关键词组合来搜索（如：姓名+采访、姓名+对话、姓名+访谈、姓名+演讲等），确保覆盖面足够广。
-
-注意区分此人作为受访者的内容和其他同名者的内容。
+    output_format = """
 
 请严格按以下格式整理每一条采访记录：
 
@@ -364,74 +384,56 @@ async def guest_web_search(guest_name: str, guest_description: str = "") -> dict
 ## 采访 2：[标题]
 ...
 
-每条记录必须包含完整的可点击URL链接。最后汇总发现了多少条采访记录。"""
+每条记录必须包含完整的可点击URL链接。"""
+
+    # 三轮搜索，不同角度
+    search_rounds = [
+        f"请搜索「{guest_name}」接受过的深度采访和专访文章。{desc_hint}\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话。{output_format}",
+        f"请搜索「{guest_name}」的访谈视频、播客节目和公开演讲。{desc_hint}\n搜索关键词建议：{guest_name} 访谈、{guest_name} 播客、{guest_name} 演讲、{guest_name} TED。{output_format}",
+        f"请搜索「{guest_name}」在媒体上发表的观点、评论文章和深度报道。{desc_hint}\n搜索关键词建议：{guest_name} 观点、{guest_name} 评论、{guest_name} 报道、{guest_name} 人物。{output_format}",
+    ]
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    all_results = []
+    all_summaries = []
+    seen_urls = set()
 
-    try:
-        response = client.messages.create(
-            model="claude-opus-4-20250514",
-            max_tokens=8096,
-            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 20}],
-            messages=[{"role": "user", "content": search_prompt}],
-        )
+    for i, prompt in enumerate(search_rounds, 1):
+        try:
+            response = client.messages.create(
+                model="claude-opus-4-20250514",
+                max_tokens=8096,
+                tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-        # 提取文本
-        result_text = ""
-        for block in response.content:
-            if block.type == "text":
-                result_text += block.text
+            text = ""
+            for block in response.content:
+                if block.type == "text":
+                    text += block.text
 
-        # 从文本中解析结构化的采访记录（标题+链接+摘要）
-        search_results = []
-        # 按 ## 采访 分割
-        sections = re.split(r'##\s*采访\s*\d+[：:]\s*', result_text)
-        for section in sections[1:]:  # 跳过第一段（前言）
-            lines = section.strip().split('\n')
-            title = lines[0].strip() if lines else ""
-            url = ""
-            snippet = ""
-            for line in lines:
-                # 提取链接
-                url_match = re.search(r'https?://[^\s\)）\]」]+', line)
-                if url_match and not url:
-                    url = url_match.group(0).rstrip('.,;:')
-                # 提取摘要
-                if '摘要' in line and '：' in line:
-                    snippet = line.split('：', 1)[1].strip()
-                elif '摘要' in line and ':' in line:
-                    snippet = line.split(':', 1)[1].strip()
-            if url:
-                search_results.append({"url": url, "title": title, "snippet": snippet})
+            results = _parse_search_results(text)
+            new_count = 0
+            for r in results:
+                if r["url"] not in seen_urls:
+                    seen_urls.add(r["url"])
+                    all_results.append(r)
+                    new_count += 1
 
-        # 如果结构化解析没提取到，降级用正则提取所有 URL
-        if not search_results:
-            urls = re.findall(r'https?://[^\s\)）\]」]+', result_text)
-            seen = set()
-            for u in urls:
-                u = u.rstrip('.,;:')
-                if u not in seen:
-                    seen.add(u)
-                    search_results.append({"url": u, "title": "", "snippet": ""})
+            all_summaries.append(text)
+            logger.info(f"嘉宾搜索第{i}轮: {guest_name}, 本轮{len(results)}条, 新增{new_count}条")
 
-        # 去重
-        seen_urls = set()
-        unique_results = []
-        for sr in search_results:
-            if sr["url"] not in seen_urls:
-                seen_urls.add(sr["url"])
-                unique_results.append(sr)
+        except Exception as e:
+            logger.error(f"嘉宾搜索第{i}轮失败: {e}")
 
-        logger.info(f"嘉宾搜索完成: {guest_name}, 文本{len(result_text)}字, 提取{len(unique_results)}条链接")
+    combined_summary = "\n\n---\n\n".join(all_summaries)
+    logger.info(f"嘉宾搜索完成: {guest_name}, 共{len(all_results)}条链接")
 
-        return {
-            "summary": result_text,
-            "search_results": unique_results,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-    except Exception as e:
-        logger.error(f"嘉宾搜索失败: {e}", exc_info=True)
-        return {"summary": f"搜索失败：{str(e)}", "search_results": []}
+    return {
+        "summary": combined_summary,
+        "search_results": all_results,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
 
 
 async def analyze_guest(
