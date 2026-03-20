@@ -952,24 +952,27 @@
                   <template x-for="m in guestMaterials" :key="m.id">
                     <div class="bg-gray-50 rounded-xl overflow-hidden">
                       <!-- 素材头部 -->
-                      <div class="group flex items-start gap-3 p-3 cursor-pointer" @click="m._expanded = !m._expanded">
+                      <div class="group flex items-start gap-3 p-3 cursor-pointer" :class="m.status === 'excluded' ? 'opacity-40' : ''" @click="m._expanded = !m._expanded">
                         <div class="shrink-0 mt-0.5">
                           <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium"
                             :class="{'bg-blue-100 text-blue-600': m.type === 'search_result', 'bg-yellow-100 text-yellow-700': m.type === 'ai_summary', 'bg-green-100 text-green-600': m.type === 'manual_link'}"
                             x-text="m.type === 'ai_summary' ? 'AI汇总' : m.type === 'search_result' ? '搜索' : (m.platform || '链接')"></span>
                           <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ml-1"
-                            :class="{'bg-emerald-100 text-emerald-600': m.status === 'verified', 'bg-yellow-100 text-yellow-700': m.status === 'unverified', 'bg-red-100 text-red-500': m.status === 'failed', 'bg-gray-100 text-gray-400': !m.status || m.status === 'pending'}"
+                            :class="{'bg-emerald-100 text-emerald-600': m.status === 'verified', 'bg-yellow-100 text-yellow-700': m.status === 'unverified', 'bg-red-100 text-red-500': m.status === 'failed' || m.status === 'excluded', 'bg-gray-100 text-gray-400': !m.status || m.status === 'pending'}"
                             x-show="m.status && m.status !== 'pending'"
-                            x-text="{'verified':'已验证','unverified':'未验证','failed':'失败'}[m.status] || ''"></span>
+                            x-text="{'verified':'已验证','unverified':'未验证','failed':'失败','excluded':'已排除'}[m.status] || ''"></span>
                         </div>
                         <div class="flex-1 min-w-0">
-                          <p class="text-sm text-gray-800" :class="m._expanded ? '' : 'truncate'" x-text="m.title || m.url || '(无标题)'"></p>
+                          <p class="text-sm text-gray-800" :class="[m._expanded ? '' : 'truncate', m.status === 'excluded' ? 'line-through' : '']" x-text="m.title || m.url || '(无标题)'"></p>
                           <p x-show="m.url" class="text-xs text-blue-500 truncate mt-0.5">
                             <a :href="m.url" target="_blank" @click.stop x-text="m.url" class="hover:underline"></a>
                           </p>
                           <p x-show="m.summary && !m._expanded" class="text-xs text-gray-500 mt-1 line-clamp-2" x-text="m.summary"></p>
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
+                          <button @click.stop="toggleMaterialExclude(m)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-yellow-500 transition-all" :title="m.status === 'excluded' ? '恢复使用' : '排除此素材'">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                          </button>
                           <button @click.stop="deleteGuestMaterial(m.id)" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                           </button>
@@ -982,11 +985,14 @@
                           <p class="text-[10px] text-gray-400 mb-1">摘要</p>
                           <p class="text-xs text-gray-600" x-text="m.summary"></p>
                         </div>
-                        <div x-show="m.content" class="mt-2">
-                          <p class="text-[10px] text-gray-400 mb-1">正文内容</p>
-                          <div class="text-xs text-gray-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-line bg-white rounded-lg p-3 border border-gray-100" x-text="m.content"></div>
+                        <div class="mt-2">
+                          <div class="flex items-center justify-between mb-1">
+                            <p class="text-[10px] text-gray-400">正文内容</p>
+                            <button @click.stop="updateMaterialContent(m)" class="text-[10px] text-blue-500 hover:text-blue-700" x-text="m.content ? '编辑内容' : '粘贴内容'"></button>
+                          </div>
+                          <div x-show="m.content" class="text-xs text-gray-700 leading-relaxed max-h-60 overflow-y-auto whitespace-pre-line bg-white rounded-lg p-3 border border-gray-100" x-text="m.content"></div>
+                          <p x-show="!m.content" class="text-xs text-gray-400 italic">暂无内容 — 点击右上角「粘贴内容」手动添加</p>
                         </div>
-                        <p x-show="!m.content && !m.summary" class="text-xs text-gray-400 mt-2 italic">暂无内容（链接未抓取或抓取失败）</p>
                       </div>
                     </div>
                   </template>
@@ -1058,7 +1064,10 @@
                         <span class="text-xs text-gray-400" x-text="a.content?.created_at || a.created_at"></span>
                       </div>
                       <div class="flex items-center gap-2">
-                        <button @click.stop="deleteGuestAnalysis(a.id)" class="text-gray-300 hover:text-red-500 transition-colors">
+                        <button @click.stop="copyAnalysisText(a)" class="text-gray-300 hover:text-blue-500 transition-colors" title="复制全文">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                        <button @click.stop="deleteGuestAnalysis(a.id)" class="text-gray-300 hover:text-red-500 transition-colors" title="删除">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                         <svg class="w-4 h-4 text-gray-400 transition-transform" :class="guestAnalysisExpanded === a.id ? 'rotate-180' : ''" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
@@ -1985,12 +1994,40 @@ function app() {
       this.guestChatInput = '';
       this.guestChatLoading = true;
       try {
-        const res = await this.api('POST', '/guest/' + this.selectedGuest.id + '/chat', { message: msg });
+        const res = await this.api('POST', '/guest/' + this.selectedGuest.id + '/chat', {
+          message: msg,
+          history: this.guestChatHistory.slice(0, -1),
+        });
         this.guestChatHistory.push({ role: 'guest', text: res.reply });
       } catch (e) {
         this.guestChatHistory.push({ role: 'guest', text: '对话失败: ' + e.message });
       }
       this.guestChatLoading = false;
+    },
+    async updateMaterialContent(m) {
+      if (!this.selectedGuest) return;
+      const content = prompt('粘贴文章/转录内容：', m.content || '');
+      if (content === null) return;
+      try {
+        await this.api('PUT', '/guest/' + this.selectedGuest.id + '/material/' + m.id, { content });
+        m.content = content;
+        m.status = content ? 'verified' : m.status;
+      } catch (e) { /* ignore */ }
+    },
+    async toggleMaterialExclude(m) {
+      if (!this.selectedGuest) return;
+      const newStatus = m.status === 'excluded' ? 'verified' : 'excluded';
+      try {
+        await this.api('PUT', '/guest/' + this.selectedGuest.id + '/material/' + m.id, { status: newStatus });
+        m.status = newStatus;
+      } catch (e) { /* ignore */ }
+    },
+    copyAnalysisText(a) {
+      const text = a.content?.result || '';
+      navigator.clipboard.writeText(text).then(() => {
+        this.guestError = '已复制到剪贴板';
+        setTimeout(() => this.guestError = '', 2000);
+      });
     },
 
     sortVideos() {

@@ -71,9 +71,13 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
             result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search)
             search_results = result.get("search_results", [])
 
-            # 获取已有素材的 URL 列表，用于去重
+            # 获取已有素材，用于 URL 去重和清理旧 AI 汇总
             async with async_session() as session:
                 existing = await db_service.get_guest_materials(session, guest_id)
+                # 删除旧的 AI 汇总（覆盖而非累积）
+                for m in existing:
+                    if m.get("type") == "ai_summary":
+                        await db_service.delete_guest_material(session, m["id"])
             existing_urls = {m["url"] for m in existing if m.get("url")}
 
             async with async_session() as session:
@@ -251,7 +255,7 @@ async def delete_analysis(guest_id: int, analysis_id: int, db: AsyncSession = De
 
 @router.post("/{guest_id}/chat")
 async def guest_chat(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    """对话预演：AI 扮演嘉宾进行模拟对话"""
+    """对话预演：AI 扮演嘉宾进行多轮模拟对话"""
     message = body.get("message", "").strip()
     if not message:
         raise HTTPException(status_code=400, detail="消息不能为空")
@@ -261,6 +265,19 @@ async def guest_chat(guest_id: int, body: dict, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=404, detail="嘉宾不存在")
 
     analyses = await db_service.get_guest_analyses(db, guest_id)
+    chat_history = body.get("history", [])
 
-    reply = await ai_service.guest_chat(guest["name"], analyses, message)
+    reply = await ai_service.guest_chat(guest["name"], analyses, chat_history, message)
     return {"reply": reply}
+
+
+@router.put("/{guest_id}/material/{material_id}")
+async def update_material(guest_id: int, material_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+    """编辑素材内容（手动粘贴转录文本等）"""
+    content = body.get("content")
+    status = body.get("status")
+    if content is not None:
+        await db_service.update_guest_material_content(db, material_id, content, status=status or "verified")
+    elif status is not None:
+        await db_service.update_guest_material_status(db, material_id, status)
+    return {"ok": True}

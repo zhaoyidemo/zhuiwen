@@ -500,7 +500,10 @@ def _format_materials_context(guest_name: str, materials: list[dict], max_chars:
     context_lines = [f"# 嘉宾：{guest_name}\n"]
     total_chars = 0
 
-    for i, m in enumerate(materials, 1):
+    # 过滤已排除的素材
+    active_materials = [m for m in materials if m.get("status") != "excluded"]
+
+    for i, m in enumerate(active_materials, 1):
         status = m.get("status", "pending")
         mat_type = m.get("type", "")
 
@@ -531,7 +534,7 @@ def _format_materials_context(guest_name: str, materials: list[dict], max_chars:
 
         entry_text = "\n".join(entry_lines)
         if total_chars + len(entry_text) > max_chars:
-            context_lines.append(f"\n[剩余 {len(materials) - i + 1} 条素材因长度限制已省略]")
+            context_lines.append(f"\n[剩余 {len(active_materials) - i + 1} 条素材因长度限制已省略]")
             break
         context_lines.append(entry_text)
         total_chars += len(entry_text)
@@ -602,8 +605,8 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     }
 
 
-async def guest_chat(guest_name: str, analyses: list[dict], user_message: str) -> str:
-    """对话预演：AI 扮演嘉宾进行模拟对话"""
+async def guest_chat(guest_name: str, analyses: list[dict], chat_history: list[dict], user_message: str) -> str:
+    """对话预演：AI 扮演嘉宾进行多轮模拟对话"""
     if not settings.ANTHROPIC_API_KEY:
         return "错误：ANTHROPIC_API_KEY 未配置"
 
@@ -626,13 +629,20 @@ async def guest_chat(guest_name: str, analyses: list[dict], user_message: str) -
 
 请始终保持角色，用第一人称回答。回答要自然、有深度，像真实的采访对话。"""
 
+    # 构建多轮对话消息
+    messages = []
+    for msg in chat_history:
+        role = "user" if msg.get("role") == "user" else "assistant"
+        messages.append({"role": role, "content": msg.get("text", "")})
+    messages.append({"role": "user", "content": user_message})
+
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=2048,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_message}],
+            messages=messages,
         )
         return message.content[0].text
     except Exception as e:
