@@ -71,12 +71,20 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
             result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search)
             search_results = result.get("search_results", [])
 
+            # 获取已有素材的 URL 列表，用于去重
             async with async_session() as session:
-                # 保存各条搜索结果
+                existing = await db_service.get_guest_materials(session, guest_id)
+            existing_urls = {m["url"] for m in existing if m.get("url")}
+
+            async with async_session() as session:
+                # 保存各条搜索结果（跳过已存在的 URL）
                 saved_ids = []
+                skipped = 0
                 for sr in search_results:
                     url = sr.get("url", "")
-                    if not url:
+                    if not url or url in existing_urls:
+                        if url:
+                            skipped += 1
                         continue
                     mat = await db_service.add_guest_material(session, guest_id, {
                         "type": "search_result",
@@ -89,7 +97,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                     })
                     saved_ids.append((mat["id"], url))
 
-                # AI 汇总单独标记为 ai_summary 类型（分析时降权）
+                # AI 汇总：每次搜索都更新（不去重）
                 if result.get("summary"):
                     await db_service.add_guest_material(session, guest_id, {
                         "type": "ai_summary",
@@ -99,7 +107,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                         "status": "unverified",
                     })
 
-            logger.info(f"嘉宾搜索完成: {guest_name}, {len(saved_ids)} 条链接，开始抓取验证...")
+            logger.info(f"嘉宾搜索完成: {guest_name}, 新增{len(saved_ids)}条, 跳过已有{skipped}条, 开始抓取验证...")
 
             # 逐个抓取链接全文并验证相关性
             verified = 0
