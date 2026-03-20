@@ -456,13 +456,16 @@ def _parse_search_results(text: str) -> list[dict]:
     return results
 
 
-async def guest_web_search(guest_name: str, guest_description: str = "", custom_search_prompt: str = "") -> dict:
-    """多轮 Claude web search 搜索嘉宾采访资料，合并去重"""
+async def guest_web_search(guest_name: str, guest_description: str = "", custom_search_prompt: str = "", extra_keywords: str = "") -> dict:
+    """多轮 Claude web search 搜索嘉宾采访资料，合并去重，含智能补搜"""
+    import re
+
     if not settings.ANTHROPIC_API_KEY:
         return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
 
     desc_hint = f"\n此人的身份信息：{guest_description}" if guest_description else ""
     search_strategy = custom_search_prompt or DEFAULT_PROMPTS.get("AI调查员", "")
+    extra_hint = f"\n补充搜索关键词：{extra_keywords}" if extra_keywords else ""
 
     output_format = """
 
@@ -479,20 +482,34 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
 
 每条记录必须包含完整的可点击URL链接。"""
 
-    base_instruction = f"请搜索关于「{guest_name}」的公开资料。{desc_hint}\n\n搜索策略：\n{search_strategy}\n"
+    base_instruction = f"请搜索关于「{guest_name}」的公开资料。{desc_hint}{extra_hint}\n\n搜索策略：\n{search_strategy}\n"
 
-    # 两轮搜索，不同角度
+    # 构建搜索关键词（包含用户补充的）
+    base_keywords = guest_name
+    if extra_keywords:
+        extra_kw_list = [k.strip() for k in extra_keywords.replace('，', ',').split(',') if k.strip()]
+    else:
+        extra_kw_list = []
+
+    # 前两轮：固定角度搜索
     search_rounds = [
         f"{base_instruction}\n本轮重点：深度采访、专访文章、对话记录、播客节目。\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话、{guest_name} 播客。{output_format}",
         f"{base_instruction}\n本轮重点：演讲发言、观点评论、深度报道、人物特写。\n搜索关键词建议：{guest_name} 演讲、{guest_name} 观点、{guest_name} 报道、{guest_name} 人物。{output_format}",
     ]
+
+    # 如果有补充关键词，加一轮定向搜索
+    if extra_kw_list:
+        kw_str = "、".join([f"{guest_name} {kw}" for kw in extra_kw_list])
+        search_rounds.append(
+            f"{base_instruction}\n本轮重点：使用用户指定的补充关键词搜索。\n搜索关键词：{kw_str}。{output_format}"
+        )
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     all_results = []
     all_summaries = []
     seen_urls = set()
 
-    for i, prompt in enumerate(search_rounds, 1):
+    def _run_round(prompt, round_num):
         try:
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
@@ -500,12 +517,10 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
                 tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
                 messages=[{"role": "user", "content": prompt}],
             )
-
             text = ""
             for block in response.content:
                 if block.type == "text":
                     text += block.text
-
             results = _parse_search_results(text)
             new_count = 0
             for r in results:
@@ -513,12 +528,24 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
                     seen_urls.add(r["url"])
                     all_results.append(r)
                     new_count += 1
-
             all_summaries.append(text)
-            logger.info(f"嘉宾搜索第{i}轮: {guest_name}, 本轮{len(results)}条, 新增{new_count}条")
-
+            logger.info(f"嘉宾搜索第{round_num}轮: {guest_name}, 本轮{len(results)}条, 新增{new_count}条")
         except Exception as e:
-            logger.error(f"嘉宾搜索第{i}轮失败: {e}")
+            logger.error(f"嘉宾搜索第{round_num}轮失败: {e}")
+
+    for i, prompt in enumerate(search_rounds, 1):
+        _run_round(prompt, i)
+
+    # 智能补搜：分析已有结果，搜索缺失的维度
+    if len(all_results) > 0:
+        found_summary = "\n".join([f"- {r['title']}" for r in all_results[:20]])
+        gap_prompt = f"""我已经搜索到以下关于「{guest_name}」的采访资料：
+{found_summary}
+
+请分析还缺少哪些维度的资料（比如：是否缺少视频访谈？缺少某个时期的采访？缺少某个话题的讨论？），然后搜索补充。
+{desc_hint}{extra_hint}
+{output_format}"""
+        _run_round(gap_prompt, len(search_rounds) + 1)
 
     combined_summary = "\n\n---\n\n".join(all_summaries)
     logger.info(f"嘉宾搜索完成: {guest_name}, 共{len(all_results)}条链接")

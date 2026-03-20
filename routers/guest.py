@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services import db_service, ai_service
-from services.web_fetcher import fetch_page_text
+from services.web_fetcher import fetch_page_text, extract_urls_from_text
 from database import get_db, async_session
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
 
     guest_name = guest["name"]
     guest_desc = guest["description"]
+    extra_keywords = body.get("extra_keywords", "").strip()
 
     async def _bg_search():
         try:
@@ -68,7 +69,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                     if p["name"] == "AI调查员":
                         custom_search = p["content"]
                         break
-            result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search)
+            result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search, extra_keywords)
             search_results = result.get("search_results", [])
 
             # 获取已有素材，用于 URL 去重和清理旧 AI 汇总
@@ -136,6 +137,46 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
                     unverified += 1
 
             logger.info(f"嘉宾验证完成: {guest_name}, 验证通过{verified}, 未验证{unverified}, 抓取失败{failed}")
+
+            # 引用链追踪：从已抓取内容中发现新 URL
+            async with async_session() as session:
+                all_materials = await db_service.get_guest_materials(session, guest_id)
+            all_existing_urls = {m["url"] for m in all_materials if m.get("url")}
+
+            discovered_urls = []
+            for mat_id, url in saved_ids:
+                # 找到刚抓取的素材内容
+                mat = next((m for m in all_materials if m["id"] == mat_id), None)
+                if mat and mat.get("content"):
+                    for found_url in extract_urls_from_text(mat["content"]):
+                        if found_url not in all_existing_urls and found_url not in {u for u, _ in discovered_urls}:
+                            discovered_urls.append((found_url, mat.get("title", "")))
+
+            if discovered_urls:
+                # 最多追踪 10 条引用链接
+                discovered_urls = discovered_urls[:10]
+                ref_verified = 0
+                async with async_session() as session:
+                    for ref_url, source_title in discovered_urls:
+                        mat = await db_service.add_guest_material(session, guest_id, {
+                            "type": "search_result",
+                            "platform": "引用链",
+                            "url": ref_url,
+                            "title": "",
+                            "summary": f"从「{source_title}」中发现的引用链接",
+                            "status": "pending",
+                        })
+                        content = await fetch_page_text(ref_url)
+                        if content and guest_name in content:
+                            await db_service.update_guest_material_content(session, mat["id"], content, status="verified")
+                            ref_verified += 1
+                        elif content:
+                            await db_service.update_guest_material_content(session, mat["id"], content, status="unverified")
+                        else:
+                            await db_service.update_guest_material_status(session, mat["id"], "failed")
+
+                logger.info(f"引用链追踪: {guest_name}, 发现{len(discovered_urls)}条, 验证通过{ref_verified}条")
+
         except Exception as e:
             logger.error(f"嘉宾后台搜索失败: {e}", exc_info=True)
 

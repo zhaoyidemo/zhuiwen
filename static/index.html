@@ -913,15 +913,18 @@
                   </div>
                 </div>
 
-                <!-- 搜索 + 添加素材 -->
-                <div class="flex gap-3 mb-3">
+                <!-- AI调查员 -->
+                <div class="flex gap-2 mb-2">
+                  <input type="text" x-model="extraSearchKeywords" placeholder="补充搜索词（选填，如：别名、公司名，逗号分隔）"
+                    class="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-blue-500">
                   <button @click="searchGuest" :disabled="guestSearching"
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
-                    <svg x-show="!guestSearching" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <svg x-show="guestSearching" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    <span x-text="guestSearching ? 'AI调查员工作中...' : 'AI调查员'"></span>
+                    class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-xs font-medium flex items-center gap-2 transition-colors shrink-0">
+                    <svg x-show="!guestSearching" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg x-show="guestSearching" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    <span x-text="guestSearching ? '工作中...' : 'AI调查员'"></span>
                   </button>
                 </div>
+                <p class="text-[10px] text-gray-400 mb-3">含智能补搜 + 引用链追踪，自动发现更多素材</p>
 
                 <!-- 手动添加链接 -->
                 <div class="flex gap-2 items-center">
@@ -1199,6 +1202,7 @@ function app() {
     newGuestDesc: '',
     addingGuest: false,
     guestSearching: false,
+    extraSearchKeywords: '',
     guestAnalyzing: null,
     guestError: '',
     newMaterialUrl: '',
@@ -1918,7 +1922,9 @@ function app() {
       if (!this.selectedGuest || this.guestSearching) return;
       this.guestSearching = true; this.guestError = '';
       try {
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/search', {});
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/search', {
+          extra_keywords: this.extraSearchKeywords,
+        });
         // 后台搜索中，轮询等待素材出现
         const prevCount = this.guestMaterials.length;
         for (let i = 0; i < 40; i++) {
