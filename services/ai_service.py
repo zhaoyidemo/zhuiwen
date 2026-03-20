@@ -83,49 +83,26 @@ DEFAULT_PROMPTS = {
 
 请用多个不同的搜索关键词组合来搜索，确保覆盖面足够广。注意区分此人作为受访者的内容和其他同名者的内容。""",
 
-    "嘉宾研究报告": """你是「继续追问」节目的资深研究员。请根据嘉宾的全部采访素材，生成一份深度研究报告。
-
-你的任务不是简单罗列信息，而是从海量素材中发现规律、矛盾和空白。
-
-## 一、人物概览
-- 一段话概括此人（身份、核心标签、公众认知）
-
-## 二、关键经历时间线
-- 按时间梳理重要节点，每个节点标注信息来源
-
-## 三、核心观点图谱
-- 提炼此人最核心的3-5个观点主张
-- 每个观点附上原文引述（带出处）
-- 标注观点的演变：是否前后有变化或矛盾？
-
-## 四、金句库
-- 从采访原文中提取10-15句最有价值的直接引语
-- 每句标注出处和语境
-
-## 五、被问烂了的问题 TOP5
-- 统计各采访中被反复问到的话题
-- 标注每个话题被问过几次、在哪些采访中出现
-- 这些话题在我们的采访中必须避开或换角度
-
-## 六、没人深挖的方向
-- 此人在采访中主动提起但采访者没有跟进的话题
-- 此人的经历/身份中有价值但从未被问到的领域
-- 近期动态中可能延伸出的新话题
-
-## 七、矛盾与争议点
-- 此人在不同场合说过矛盾的话吗？
-- 公众对此人有哪些争议？
-- 这些矛盾和争议是天然的追问素材
-
-重要规则：
-- 只引用素材原文中明确存在的信息，不要用你自己的知识补充
-- 每个观点、引语必须标注来源素材编号（如「资料3」）
-- 如果某条信息只出现在标注为"未验证"的素材中，请注明"[未验证]"
-- 如果素材中找不到支撑，明确标注"[未经证实]"而不是自行编造""",
-
-    "采访策划方案": """你是「继续追问」节目的总编导。请根据嘉宾研究报告和原始素材，设计一份完整的采访策划方案。
+    "采访策划方案": """你是「继续追问」节目的总编导兼首席研究员。请根据嘉宾的全部采访素材，先快速研究再直接输出采访策划方案。
 
 核心原则：不问别人问过的问题，专攻别人没挖到的深度。
+
+# 第一部分：嘉宾速写
+
+## 人物概览
+- 一段话概括此人（身份、核心标签、公众认知）
+
+## 金句库
+- 从素材原文中提取5-8句最有价值的直接引语，每句标注出处
+
+## 被问烂了的问题
+- 列出各采访中被反复问到的话题（标注出现次数），这些必须避开或换角度
+
+## 矛盾与未挖掘方向
+- 此人在不同场合说过矛盾的话？（附原文出处）
+- 采访者没有跟进但值得深挖的话题？
+
+# 第二部分：采访策划
 
 ## 一、采访定位
 - 这期节目的核心命题是什么？（一句话）
@@ -146,12 +123,11 @@ DEFAULT_PROMPTS = {
 - ⚡ 如果嘉宾回避，如何换角度再问？
 
 ## 四、追问武器库
-- 从研究报告中的"矛盾点"设计3-5个追问弹药
+- 从"矛盾点"设计3-5个追问弹药
 - 格式：「你在[某次采访]中说过[原话]，但[另一场合]又说[原话]，能解释一下吗？」
 
 ## 五、节奏设计
 - 预估总时长和每个板块的时间分配
-- 标注高潮点和情绪转折点
 - 哪些片段适合短视频二创
 
 ## 六、风险预案
@@ -159,10 +135,10 @@ DEFAULT_PROMPTS = {
 - 嘉宾可能的回避策略及破解方式
 
 重要规则：
-- 引用嘉宾原话时，必须是素材中实际存在的引语，标注来源素材编号
+- 只引用素材原文中明确存在的信息，不要用你自己的知识补充
+- 每个观点、引语必须标注来源素材编号（如「资料3」）
+- 如果某条信息只出现在标注为"未验证"的素材中，请注明"[未验证]"
 - 不要编造嘉宾没说过的话或没做过的事
-- 追问武器库中的引语必须来自素材原文
-- 对于标注为"未验证"的信息，使用时需注明
 
 请让每个问题都有明确的"追问路径"，这是「继续追问」的核心价值。""",
 }
@@ -492,41 +468,17 @@ def _format_materials_context(guest_name: str, materials: list[dict], max_chars:
 async def analyze_guest(
     guest_name: str,
     materials: list[dict],
-    analysis_type: str,
+    analysis_type: str = "interview",
     custom_prompt: str = "",
-    prior_analyses: list[dict] = None,
+    **kwargs,
 ) -> dict:
-    """根据嘉宾资料进行 AI 分析（递进式：后续分析包含前序结果）"""
+    """根据嘉宾素材直接生成采访策划方案"""
     if not settings.ANTHROPIC_API_KEY:
         return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
 
-    type_to_prompt_name = {
-        "research": "嘉宾研究报告",
-        "interview": "采访策划方案",
-    }
-    prompt_name = type_to_prompt_name.get(analysis_type, "嘉宾研究报告")
-    system_prompt = custom_prompt or DEFAULT_PROMPTS.get(prompt_name, "")
-
-    if analysis_type == "interview" and prior_analyses:
-        # 采访策划：只送研究报告 + 素材标题列表（不送全文，省 token）
-        prior_text = ""
-        for pa in prior_analyses:
-            pa_result = pa.get("content", {}).get("result", "")
-            if pa_result:
-                prior_text += f"\n{pa_result}\n"
-
-        # 只列出素材标题和链接，不含正文
-        material_index = [f"# 嘉宾：{guest_name}\n\n## 素材索引"]
-        for i, m in enumerate(materials, 1):
-            status_tag = {"verified": "[已验证]", "unverified": "[未验证]", "failed": "[失败]"}.get(m.get("status", ""), "")
-            material_index.append(f"{i}. {m.get('title', '(无标题)')} {status_tag} - {m.get('url', '')}")
-        material_index_text = "\n".join(material_index)
-
-        user_text = f"# 研究报告\n{prior_text}\n\n---\n{material_index_text}\n\n请基于研究报告设计采访策划方案。研究报告已覆盖的内容不要重复。"
-    else:
-        # 研究报告：送素材全文
-        materials_text = _format_materials_context(guest_name, materials)
-        user_text = f"{materials_text}\n请根据以上资料进行分析。"
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("采访策划方案", "")
+    materials_text = _format_materials_context(guest_name, materials)
+    user_text = f"{materials_text}\n请根据以上资料，先研究再输出采访策划方案。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:

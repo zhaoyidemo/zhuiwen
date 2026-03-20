@@ -153,10 +153,6 @@ async def delete_material(guest_id: int, material_id: int, db: AsyncSession = De
 
 @router.post("/{guest_id}/analyze")
 async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    analysis_type = body.get("analysis_type", "research")
-    if analysis_type not in ("research", "interview"):
-        raise HTTPException(status_code=400, detail="无效的分析类型")
-
     guest = await db_service.get_guest(db, guest_id)
     if not guest:
         raise HTTPException(status_code=404, detail="嘉宾不存在")
@@ -168,29 +164,21 @@ async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = D
     guest_name = guest["name"]
     custom_prompt = body.get("prompt", "")
 
-    # 递进式：采访策划时，自动获取已有的研究报告作为前序分析
-    prior_analyses = []
-    if analysis_type == "interview":
-        all_analyses = await db_service.get_guest_analyses(db, guest_id)
-        prior_analyses = [a for a in all_analyses if a["analysis_type"] == "research"]
-
     async def _bg_analyze():
         try:
             result = await ai_service.analyze_guest(
                 guest_name=guest_name,
                 materials=materials,
-                analysis_type=analysis_type,
                 custom_prompt=custom_prompt,
-                prior_analyses=prior_analyses,
             )
             async with async_session() as session:
-                await db_service.save_guest_analysis(session, guest_id, analysis_type, result)
-            logger.info(f"嘉宾分析完成: {guest_name} - {analysis_type}")
+                await db_service.save_guest_analysis(session, guest_id, "interview", result)
+            logger.info(f"采访策划完成: {guest_name}")
         except Exception as e:
-            logger.error(f"嘉宾后台分析失败: {e}", exc_info=True)
+            logger.error(f"采访策划失败: {e}", exc_info=True)
 
     asyncio.create_task(_bg_analyze())
-    return {"ok": True, "message": "分析已开始，请稍候刷新查看结果"}
+    return {"ok": True, "message": "采访策划生成中，请稍候刷新查看结果"}
 
 
 @router.get("/{guest_id}/analyses")
