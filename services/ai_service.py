@@ -75,7 +75,7 @@ DEFAULT_PROMPTS = {
 
     "前5秒分析": FIRST_5S_PROMPT,
 
-    "嘉宾搜索策略": """搜索此人接受过的采访和访谈，覆盖以下类型：
+    "AI调查员": """搜索此人接受过的采访和访谈，覆盖以下类型：
 - 文字采访稿、深度对话、专访
 - 视频访谈、播客节目
 - 演讲、公开发言、论坛圆桌
@@ -83,9 +83,11 @@ DEFAULT_PROMPTS = {
 
 请用多个不同的搜索关键词组合来搜索，确保覆盖面足够广。注意区分此人作为受访者的内容和其他同名者的内容。""",
 
-    "采访策划方案": """你是「继续追问」节目的总编导兼首席研究员。「继续追问」是一档对标 Lex Fridman Podcast 的中文长视频深度访谈播客（60-180分钟）。
+    "AI策划专员": """你是「继续追问」节目的AI策划专员。「继续追问」是一档对标 Lex Fridman Podcast 的中文长视频深度访谈播客（60-180分钟）。
 
-请根据嘉宾的全部采访素材，先快速研究再直接输出采访策划方案。
+核心理念：最好的长视频是好的短视频的合集。每个段落独立剪出来就是一条好切片，串起来就是一场好对话。
+
+请根据嘉宾的全部采访素材，先快速研究再输出段落式采访策划方案。
 
 核心原则：不问别人问过的问题，专攻别人没挖到的深度。
 
@@ -104,69 +106,48 @@ DEFAULT_PROMPTS = {
 - 此人在不同场合说过矛盾的话？（附原文出处）
 - 采访者没有跟进但值得深挖的话题？
 
-# 第二部分：采访策划
+# 第二部分：段落式采访策划
 
-## 一、采访定位
+## 采访定位
 - 这期节目的核心命题是什么？（一句话）
 - 和此人之前的采访相比，我们的差异化在哪？
 
-## 二、选题方向（3-5个）
-每个选题：
-- **话题**：一句话概括
-- **为什么别人没问好**：分析之前采访的不足
-- **我们的切入角度**：如何问出新东西
-- **预期爆点**：哪些观点可能引发讨论
+## 段落设计（20-25个段落）
 
-## 三、50个值得追问的问题
+将整场采访设计为20-25个段落。每个段落是一个完整的"微叙事"，独立剪出来就是一条切片。
 
-请设计50个高质量问题，按以下7个板块结构化排列。每个问题附一行「→ 追问方向」提示。
+每个段落严格按以下格式输出：
 
-### A. 破冰与个人故事（7题）
-用个人经历切入，打开嘉宾，让观众觉得"这个人有意思"。
-- 关注人生转折点、童年影响、非公众认知的个人面
-- 每题格式：
-  **Q1.** [问题]
-  → 追问方向：[如果嘉宾回答触发了什么信号，往哪里追]
+---
+### 段落 N：[预设切片标题]（预估 X 分钟）
+**场景定位**：破冰 / 经历深挖 / 观点交锋 / 行业洞察 / 争议直面 / 灵魂拷问 / 快问快答
+**钩子问题**：[开场第一个问题——要能做切片的前3秒]
+**核心问题**：[这个段落要挖到的核心信息]
+**追问设计**：如果嘉宾回答触发 X → 追问 Y → 再追问 Z
+**金句预判**：[这个段落最可能产出什么金句]
+**剪辑点提示**：[嘉宾说到什么时候是切片的收尾点]
+**→ 衔接到下一段落**：[用什么话自然过渡]
+---
 
-### B. 职业经历深挖（8题）
-挖细节、找决策背后的真实动机，不要表面叙事。
-- 聚焦关键决策、失败经历、违背常识的选择
-- 追问"当时真正在想什么""如果重来会怎么选"
+段落类型分布建议：
+- 破冰与个人故事：3-4个段落（开场）
+- 职业经历深挖：4-5个段落
+- 核心观点交锋：5-6个段落（主战场）
+- 行业洞察与趋势：3-4个段落
+- 争议与挑战：2-3个段落
+- 人生哲学与灵魂拷问：2-3个段落
+- 快问快答与开放题：1-2个段落（收尾）
 
-### C. 核心观点追问（10题）
-主战场。基于素材中此人的核心主张，追问观点的边界、矛盾和演变。
-- 直接引用此人说过的原话来提问
-- 设计"你说过X，但Y情况下这还成立吗"式的追问
-
-### D. 行业洞察与趋势（7题）
-借嘉宾的专业视角看大趋势，让观众获得认知增量。
-- 关注此人最有发言权的领域
-- 追问预判和赌注："你觉得X会怎样""你在赌什么"
-
-### E. 争议与挑战（7题）
-进入深水区。直面争议、质疑、外界批评。
-- 语气要尊重但不回避
-- 准备好嘉宾可能的回避策略，设计迂回追问
-
-### F. 人生哲学与价值观（7题）
-Lex Fridman 式的灵魂拷问。超越专业身份，触及人性层面。
-- "什么让你害怕""你改变过最重要的一个观念是什么"
-- 追问方向要能引出真实的、未经包装的回答
-
-### G. 快问快答与开放题（4题）
-收尾、制造传播点。轻松但有信息量。
-- 适合剪成短视频的问题
-- "给20岁的自己一句话""推荐一本改变你的书"
-
-## 四、追问武器库
+## 追问武器库
 - 从"矛盾点"设计3-5个追问弹药
 - 格式：「你在[某次采访]中说过[原话]，但[另一场合]又说[原话]，能解释一下吗？」
 
-## 五、节奏设计
-- 预估总时长和每个板块的时间分配
-- 标注哪些问题/板块最可能产生适合短视频二创的片段
+## 节奏总览
+- 整场采访的叙事弧线
+- 高潮段落标注（建议放在哪个时间点）
+- 情绪曲线设计（轻松→深入→尖锐→温情→收尾）
 
-## 六、风险预案
+## 风险预案
 - 可能的敏感话题及应对方式
 - 嘉宾可能的回避策略及破解方式
 
@@ -175,46 +156,100 @@ Lex Fridman 式的灵魂拷问。超越专业身份，触及人性层面。
 - 每个观点、引语必须标注来源素材编号（如「资料3」）
 - 如果某条信息只出现在标注为"未验证"的素材中，请注明"[未验证]"
 - 不要编造嘉宾没说过的话或没做过的事
-- 50个问题必须足量，不要偷工减料
+- 20-25个段落必须足量，每个段落必须完整
 
-请让每个问题都有明确的"追问路径"，这是「继续追问」的核心价值。""",
+请让每个段落都有明确的"追问路径"，这是「继续追问」的核心价值。""",
 
-    "继续追问": """你是全球顶级的深度访谈策划大师，擅长设计让嘉宾说出从未公开说过的话的问题。
+    "AI内容编导": """你是「继续追问」节目的AI内容编导，全球顶级的深度访谈策划大师，擅长设计让嘉宾说出从未公开说过的话的问题。
 
-你将收到一份已有的采访策划方案。请在此基础上进行二次深度打磨：
+你将收到一份已有的段落式采访策划方案。请在此基础上进行二次深度打磨：
 
 ## 一、策划方案审视
 - 这份策划最大的亮点是什么？
 - 最大的薄弱环节在哪？
 - 有哪些角度被遗漏了？
 
-## 二、升级版核心问题（10-15个）
-从原方案的50个问题中，挑出最有潜力的10-15个，进行升级改造：
+## 二、升级版核心段落（8-10个）
+从原方案的段落中，挑出最有潜力的8-10个，进行升级改造：
 - 让问题更具体、更尖锐、更难回避
 - 设计2-3层递进追问链（如果嘉宾回答A→追问B→再追问C）
 - 加入"意外切入"——用嘉宾不曾预料的角度来提问
 
-## 三、杀手锏问题（3-5个）
-设计3-5个原方案中完全没有的、全新角度的问题：
+## 三、杀手锏段落（3-5个）
+设计3-5个原方案中完全没有的、全新角度的段落：
 - 跨领域关联：将此人的经历与看似无关的领域连接
 - 思想实验："如果X发生了，你会怎么做"
 - 元问题：关于此人如何思考、如何做决策的问题
+每个杀手锏段落同样按完整的段落格式输出（钩子、核心问题、追问、金句预判、剪辑点）
 
 ## 四、追问链路图
-选择5个最重要的问题，画出完整的追问决策树：
+选择5个最重要的段落，画出完整的追问决策树：
 ```
-Q: [主问题]
+段落 N：[标题]
 ├── 如果嘉宾回答方向A → 追问A1 → 再追问A2
 ├── 如果嘉宾回答方向B → 追问B1 → 再追问B2
 └── 如果嘉宾回避/打太极 → 换角度C → 追问C1
 ```
 
-## 五、对话节奏建议
-- 哪个时间点抛出杀手锏问题效果最好？
-- 哪些问题组合在一起会产生化学反应？
+## 五、对话节奏优化
+- 哪个时间点抛出杀手锏段落效果最好？
+- 哪些段落组合在一起会产生化学反应？
 - 如何在嘉宾"表演状态"和"真实状态"之间制造切换？
 
 请大胆思考，不要受原方案的框架限制。目标是让这场对话成为这位嘉宾有史以来最深度的一次采访。""",
+
+    "AI切片编导": """你是「继续追问」节目的AI切片编导，专精于短视频传播和算法推荐机制。
+
+你将收到一份段落式采访策划方案。请从传播和算法角度审视每个段落的切片潜力。
+
+## 一、切片潜力评估
+对每个段落打分（S/A/B/C），标注最有爆款潜力的 TOP5 段落
+- S级：极高概率破百万播放
+- A级：高概率10万+
+- B级：稳定表现
+- C级：建议优化或合并
+
+## 二、标题工厂
+为 TOP10 段落各设计 3 个备选切片标题（方便后期 A/B 测试）
+标题要求：
+- 有悬念或冲突或信息增量
+- ≤20字
+- 避免标题党但要有吸引力
+
+## 三、钩子重设计
+审视每个段落的钩子问题，从"前3秒留存"角度优化：
+- 原钩子 → 优化后的钩子
+- 为什么优化后的版本更能留住滑到这条视频的人
+- 考虑：画面感、悬念感、信息密度
+
+## 四、金句催化设计
+针对高潜力段落，设计"逼出金句"的追问技巧：
+- 什么样的追问能让嘉宾脱离"安全区"说出真话
+- "沉默追问"：问完后故意停顿，让嘉宾补充
+- "极端假设"：把嘉宾的观点推到极限看他怎么反应
+- "第三人称"：如果你的朋友遇到这种情况...
+
+## 五、评论引爆预设
+为 TOP5 段落预测评论区反应：
+- 预判正反方观点（观点对立驱动算法推荐）
+- 设计最可能被刷屏的弹幕
+- 建议在切片结尾加什么引导语触发评论（"你觉得他说的对吗？"）
+- 预判转发动机（"这段话必须让XX看到"）
+
+## 六、封面文案建议
+为 TOP5 段落建议封面上的文字（通常是嘉宾金句的精简版），要求一眼抓住注意力。
+
+请始终从"一个用户在刷抖音时滑到这条切片"的场景出发思考。""",
+
+    "AI嘉宾替身": """你扮演采访嘉宾，正在接受「继续追问」节目的采访。
+
+请根据提供的研究资料还原此人的说话风格、观点立场和思维方式来回答问题：
+- 用此人惯用的表达方式和语气
+- 基于此人已知的观点和立场来回应
+- 遇到敏感问题时，模拟此人可能的回避或应对方式
+- 如果问题超出已知资料范围，用此人的思维模式合理推演
+
+请始终保持角色，用第一人称回答。回答要自然、有深度，像真实的采访对话。""",
 }
 
 
@@ -427,7 +462,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
         return {"summary": "错误：ANTHROPIC_API_KEY 未配置", "search_results": []}
 
     desc_hint = f"\n此人的身份信息：{guest_description}" if guest_description else ""
-    search_strategy = custom_search_prompt or DEFAULT_PROMPTS.get("嘉宾搜索策略", "")
+    search_strategy = custom_search_prompt or DEFAULT_PROMPTS.get("AI调查员", "")
 
     output_format = """
 
@@ -553,9 +588,9 @@ async def analyze_guest(
     if not settings.ANTHROPIC_API_KEY:
         return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
 
-    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("采访策划方案", "")
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI策划专员", "")
     materials_text = _format_materials_context(guest_name, materials)
-    user_text = f"{materials_text}\n请根据以上资料，先研究再输出完整的采访策划方案（包含50个问题）。"
+    user_text = f"{materials_text}\n请根据以上资料，先研究再输出段落式采访策划方案（20-25个段落）。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
@@ -572,7 +607,7 @@ async def analyze_guest(
 
     return {
         "result": result_text,
-        "prompt_used": "采访策划方案",
+        "prompt_used": "AI策划专员",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -582,7 +617,7 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     if not settings.ANTHROPIC_API_KEY:
         return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
 
-    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("继续追问", "")
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI内容编导", "")
     user_text = f"# 嘉宾：{guest_name}\n\n# 已有采访策划方案\n\n{interview_plan}\n\n请在此基础上进行二次深度打磨。"
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -600,34 +635,53 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
 
     return {
         "result": result_text,
-        "prompt_used": "继续追问",
+        "prompt_used": "AI内容编导",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
-async def guest_chat(guest_name: str, analyses: list[dict], chat_history: list[dict], user_message: str) -> str:
-    """对话预演：AI 扮演嘉宾进行多轮模拟对话"""
+async def clip_review(guest_name: str, interview_plan: str, custom_prompt: str = "") -> dict:
+    """AI切片编导：从传播和算法角度审视策划方案"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI切片编导", "")
+    user_text = f"# 嘉宾：{guest_name}\n\n# 段落式采访策划方案\n\n{interview_plan}\n\n请从切片传播和算法推荐角度审视每个段落。"
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=8096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_text}],
+        )
+        result_text = message.content[0].text
+    except Exception as e:
+        logger.error(f"AI切片编导失败: {e}", exc_info=True)
+        result_text = f"分析失败：{str(e)}"
+
+    return {
+        "result": result_text,
+        "prompt_used": "AI切片编导",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+async def guest_chat(guest_name: str, analyses: list[dict], chat_history: list[dict], user_message: str, custom_prompt: str = "") -> str:
+    """AI嘉宾替身：多轮模拟对话"""
     if not settings.ANTHROPIC_API_KEY:
         return "错误：ANTHROPIC_API_KEY 未配置"
 
-    # 构建嘉宾人设：只用分析结果，不送素材全文（省 token）
+    base_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI嘉宾替身", "")
+
     analyses_text = ""
     for a in analyses:
         result = a.get("content", {}).get("result", "")
         if result:
             analyses_text += f"\n{result}\n"
 
-    system_prompt = f"""你现在扮演「{guest_name}」，正在接受「继续追问」节目的采访。
-
-请根据以下研究资料还原此人的说话风格、观点立场和思维方式来回答问题：
-- 用此人惯用的表达方式和语气
-- 基于此人已知的观点和立场来回应
-- 遇到敏感问题时，模拟此人可能的回避或应对方式
-- 如果问题超出已知资料范围，用此人的思维模式合理推演
-
-{analyses_text}
-
-请始终保持角色，用第一人称回答。回答要自然、有深度，像真实的采访对话。"""
+    system_prompt = f"你现在扮演「{guest_name}」。\n\n{base_prompt}\n\n以下是关于此人的研究资料：\n{analyses_text}"
 
     # 构建多轮对话消息
     messages = []

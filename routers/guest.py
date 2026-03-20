@@ -65,7 +65,7 @@ async def search_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get
             async with async_session() as s:
                 prompts = await db_service.get_ai_prompts(s)
                 for p in prompts:
-                    if p["name"] == "嘉宾搜索策略":
+                    if p["name"] == "AI调查员":
                         custom_search = p["content"]
                         break
             result = await ai_service.guest_web_search(guest_name, guest_desc, custom_search)
@@ -222,7 +222,7 @@ async def deep_followup(guest_id: int, body: dict, db: AsyncSession = Depends(ge
                 async with async_session() as s:
                     prompts = await db_service.get_ai_prompts(s)
                     for p in prompts:
-                        if p["name"] == "继续追问":
+                        if p["name"] == "AI内容编导":
                             prompt = p["content"]
                             break
 
@@ -234,7 +234,49 @@ async def deep_followup(guest_id: int, body: dict, db: AsyncSession = Depends(ge
             logger.error(f"继续追问失败: {e}", exc_info=True)
 
     asyncio.create_task(_bg_followup())
-    return {"ok": True, "message": "继续追问分析中，请稍候刷新查看结果"}
+    return {"ok": True, "message": "AI内容编导分析中，请稍候刷新查看结果"}
+
+
+@router.post("/{guest_id}/clip-review")
+async def clip_review(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+    """AI切片编导：从传播和算法角度审视策划方案"""
+    guest = await db_service.get_guest(db, guest_id)
+    if not guest:
+        raise HTTPException(status_code=404, detail="嘉宾不存在")
+
+    analyses = await db_service.get_guest_analyses(db, guest_id)
+    interview_plan = ""
+    for a in analyses:
+        if a["analysis_type"] == "interview":
+            interview_plan = a.get("content", {}).get("result", "")
+            break
+
+    if not interview_plan:
+        raise HTTPException(status_code=400, detail="请先生成采访策划方案")
+
+    guest_name = guest["name"]
+    custom_prompt = body.get("prompt", "")
+
+    async def _bg_clip():
+        try:
+            prompt = custom_prompt
+            if not prompt:
+                async with async_session() as s:
+                    prompts = await db_service.get_ai_prompts(s)
+                    for p in prompts:
+                        if p["name"] == "AI切片编导":
+                            prompt = p["content"]
+                            break
+
+            result = await ai_service.clip_review(guest_name, interview_plan, prompt)
+            async with async_session() as session:
+                await db_service.save_guest_analysis(session, guest_id, "clip", result)
+            logger.info(f"AI切片编导完成: {guest_name}")
+        except Exception as e:
+            logger.error(f"AI切片编导失败: {e}", exc_info=True)
+
+    asyncio.create_task(_bg_clip())
+    return {"ok": True, "message": "AI切片编导分析中，请稍候刷新查看结果"}
 
 
 @router.get("/{guest_id}/analyses")
@@ -267,7 +309,15 @@ async def guest_chat(guest_id: int, body: dict, db: AsyncSession = Depends(get_d
     analyses = await db_service.get_guest_analyses(db, guest_id)
     chat_history = body.get("history", [])
 
-    reply = await ai_service.guest_chat(guest["name"], analyses, chat_history, message)
+    # 读取自定义嘉宾替身提示词
+    custom_prompt = ""
+    prompts = await db_service.get_ai_prompts(db)
+    for p in prompts:
+        if p["name"] == "AI嘉宾替身":
+            custom_prompt = p["content"]
+            break
+
+    reply = await ai_service.guest_chat(guest["name"], analyses, chat_history, message, custom_prompt)
     return {"reply": reply}
 
 

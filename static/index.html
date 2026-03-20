@@ -919,7 +919,7 @@
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
                     <svg x-show="!guestSearching" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <svg x-show="guestSearching" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    <span x-text="guestSearching ? '搜索中...' : 'AI 搜索采访记录'"></span>
+                    <span x-text="guestSearching ? 'AI调查员工作中...' : 'AI调查员'"></span>
                   </button>
                 </div>
 
@@ -1001,28 +1001,38 @@
 
               <!-- AI 分析按钮 -->
               <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
-                <h4 class="text-sm font-medium text-gray-600 mb-3">AI 深度分析</h4>
-                <p x-show="!guestMaterials.length" class="text-xs text-gray-400 mb-3">请先搜索或添加素材后再进行分析</p>
+                <h4 class="text-sm font-medium text-gray-600 mb-3">AI 同事</h4>
+                <p x-show="!guestMaterials.length" class="text-xs text-gray-400 mb-3">请先让AI调查员搜索素材</p>
+                <!-- AI策划专员 -->
                 <button @click="runGuestAnalysis()" :disabled="guestAnalyzing || !guestMaterials.length"
                   class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
                   :class="guestAnalyzing ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  <span x-text="guestAnalyzing ? '策划生成中...' : '生成采访策划方案'"></span>
+                  <span x-text="guestAnalyzing ? 'AI策划专员工作中...' : 'AI策划专员'"></span>
                 </button>
-                <p class="text-[10px] text-gray-400 mt-2">Sonnet · 一键生成：嘉宾速写 + 差异化选题 + 50个问题 + 追问策略</p>
-                <button @click="runDeepFollowup()" :disabled="guestFollowingUp || !guestAnalyses.some(a => a.analysis_type === 'interview')"
-                  class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all mt-3"
-                  :class="guestFollowingUp ? 'bg-purple-50 border-purple-300 text-purple-700' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  <span x-text="guestFollowingUp ? '深度打磨中...' : '继续追问（Opus 深度打磨）'"></span>
-                </button>
-                <p class="text-[10px] text-gray-400 mt-1">Opus · 基于策划方案做二次追问设计：升级问题、杀手锏问题、追问链路图</p>
+                <p class="text-[10px] text-gray-400 mt-1">Sonnet · 段落式采访策划：嘉宾速写 + 20-25个段落（每段=一个切片）</p>
+                <!-- AI内容编导 + AI切片编导 -->
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                  <button @click="runDeepFollowup()" :disabled="guestFollowingUp || !guestAnalyses.some(a => a.analysis_type === 'interview')"
+                    class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestFollowingUp ? 'bg-purple-50 border-purple-300 text-purple-700' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span x-text="guestFollowingUp ? '工作中...' : 'AI内容编导'"></span>
+                  </button>
+                  <button @click="runClipReview()" :disabled="guestClipReviewing || !guestAnalyses.some(a => a.analysis_type === 'interview')"
+                    class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all"
+                    :class="guestClipReviewing ? 'bg-orange-50 border-orange-300 text-orange-700' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span x-text="guestClipReviewing ? '工作中...' : 'AI切片编导'"></span>
+                  </button>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-1">Opus · 需先完成策划专员 | 内容编导：深度追问设计 · 切片编导：标题/钩子/金句/评论引爆</p>
               </div>
 
-              <!-- 对话预演 -->
+              <!-- AI嘉宾替身 -->
               <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-4">
-                <h4 class="text-sm font-medium text-gray-600 mb-3">对话预演</h4>
-                <p class="text-[10px] text-gray-400 mb-3">AI 扮演嘉宾，你可以练习提问和追问技巧</p>
+                <h4 class="text-sm font-medium text-gray-600 mb-3">AI嘉宾替身</h4>
+                <p class="text-[10px] text-gray-400 mb-3">Sonnet · AI 扮演嘉宾，练习提问和追问技巧</p>
                 <div class="space-y-3">
                   <!-- 对话记录 -->
                   <div x-show="guestChatHistory.length" class="max-h-80 overflow-y-auto space-y-2 mb-2">
@@ -1059,7 +1069,7 @@
                       class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
                       <div class="flex items-center gap-3">
                         <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                          :class="a.analysis_type === 'followup' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'"
+                          :class="{'bg-blue-100 text-blue-700': a.analysis_type === 'interview', 'bg-purple-100 text-purple-700': a.analysis_type === 'followup', 'bg-orange-100 text-orange-700': a.analysis_type === 'clip'}"
                           x-text="guestAnalysisLabel(a.analysis_type)"></span>
                         <span class="text-xs text-gray-400" x-text="a.content?.created_at || a.created_at"></span>
                       </div>
@@ -1196,6 +1206,7 @@ function app() {
     newMaterialTitle: '',
     guestAnalysisExpanded: null,
     guestFollowingUp: false,
+    guestClipReviewing: false,
     guestChatHistory: [],
     guestChatInput: '',
     guestChatLoading: false,
@@ -1945,7 +1956,7 @@ function app() {
       this.guestAnalyzing = true; this.guestError = '';
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
-        const p = this.aiPrompts.find(p => p.name === '采访策划方案');
+        const p = this.aiPrompts.find(p => p.name === 'AI策划专员');
         await this.api('POST', '/guest/' + this.selectedGuest.id + '/analyze', {
           prompt: p?.content || '',
         });
@@ -1967,14 +1978,14 @@ function app() {
       } catch (e) { /* ignore */ }
     },
     guestAnalysisLabel(type) {
-      return { interview: '采访策划方案', followup: '继续追问' }[type] || type;
+      return { interview: 'AI策划专员', followup: 'AI内容编导', clip: 'AI切片编导' }[type] || type;
     },
     async runDeepFollowup() {
       if (!this.selectedGuest || this.guestFollowingUp) return;
       this.guestFollowingUp = true; this.guestError = '';
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
-        const p = this.aiPrompts.find(p => p.name === '继续追问');
+        const p = this.aiPrompts.find(p => p.name === 'AI内容编导');
         await this.api('POST', '/guest/' + this.selectedGuest.id + '/deep-followup', {
           prompt: p?.content || '',
         });
@@ -1984,8 +1995,26 @@ function app() {
           await this.loadGuestAnalyses(this.selectedGuest.id);
           if (this.guestAnalyses.length > prevCount) break;
         }
-      } catch (e) { this.guestError = '继续追问失败: ' + e.message; }
+      } catch (e) { this.guestError = 'AI内容编导失败: ' + e.message; }
       this.guestFollowingUp = false;
+    },
+    async runClipReview() {
+      if (!this.selectedGuest || this.guestClipReviewing) return;
+      this.guestClipReviewing = true; this.guestError = '';
+      try {
+        if (!this.aiPrompts.length) await this.loadAiPrompts();
+        const p = this.aiPrompts.find(p => p.name === 'AI切片编导');
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/clip-review', {
+          prompt: p?.content || '',
+        });
+        const prevCount = this.guestAnalyses.length;
+        for (let i = 0; i < 40; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          await this.loadGuestAnalyses(this.selectedGuest.id);
+          if (this.guestAnalyses.length > prevCount) break;
+        }
+      } catch (e) { this.guestError = 'AI切片编导失败: ' + e.message; }
+      this.guestClipReviewing = false;
     },
     async sendGuestChat() {
       if (!this.selectedGuest || !this.guestChatInput.trim() || this.guestChatLoading) return;
