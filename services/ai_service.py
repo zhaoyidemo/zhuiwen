@@ -178,6 +178,43 @@ Lex Fridman 式的灵魂拷问。超越专业身份，触及人性层面。
 - 50个问题必须足量，不要偷工减料
 
 请让每个问题都有明确的"追问路径"，这是「继续追问」的核心价值。""",
+
+    "继续追问": """你是全球顶级的深度访谈策划大师，擅长设计让嘉宾说出从未公开说过的话的问题。
+
+你将收到一份已有的采访策划方案。请在此基础上进行二次深度打磨：
+
+## 一、策划方案审视
+- 这份策划最大的亮点是什么？
+- 最大的薄弱环节在哪？
+- 有哪些角度被遗漏了？
+
+## 二、升级版核心问题（10-15个）
+从原方案的50个问题中，挑出最有潜力的10-15个，进行升级改造：
+- 让问题更具体、更尖锐、更难回避
+- 设计2-3层递进追问链（如果嘉宾回答A→追问B→再追问C）
+- 加入"意外切入"——用嘉宾不曾预料的角度来提问
+
+## 三、杀手锏问题（3-5个）
+设计3-5个原方案中完全没有的、全新角度的问题：
+- 跨领域关联：将此人的经历与看似无关的领域连接
+- 思想实验："如果X发生了，你会怎么做"
+- 元问题：关于此人如何思考、如何做决策的问题
+
+## 四、追问链路图
+选择5个最重要的问题，画出完整的追问决策树：
+```
+Q: [主问题]
+├── 如果嘉宾回答方向A → 追问A1 → 再追问A2
+├── 如果嘉宾回答方向B → 追问B1 → 再追问B2
+└── 如果嘉宾回避/打太极 → 换角度C → 追问C1
+```
+
+## 五、对话节奏建议
+- 哪个时间点抛出杀手锏问题效果最好？
+- 哪些问题组合在一起会产生化学反应？
+- 如何在嘉宾"表演状态"和"真实状态"之间制造切换？
+
+请大胆思考，不要受原方案的框架限制。目标是让这场对话成为这位嘉宾有史以来最深度的一次采访。""",
 }
 
 
@@ -533,6 +570,34 @@ async def analyze_guest(
     return {
         "result": result_text,
         "prompt_used": "采访策划方案",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: str = "") -> dict:
+    """继续追问：用 Opus 对采访策划方案做二次深度打磨"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("继续追问", "")
+    user_text = f"# 嘉宾：{guest_name}\n\n# 已有采访策划方案\n\n{interview_plan}\n\n请在此基础上进行二次深度打磨。"
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model="claude-opus-4-20250514",
+            max_tokens=8096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_text}],
+        )
+        result_text = message.content[0].text
+    except Exception as e:
+        logger.error(f"继续追问失败: {e}", exc_info=True)
+        result_text = f"分析失败：{str(e)}"
+
+    return {
+        "result": result_text,
+        "prompt_used": "继续追问",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 

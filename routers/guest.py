@@ -181,6 +181,50 @@ async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = D
     return {"ok": True, "message": "采访策划生成中，请稍候刷新查看结果"}
 
 
+@router.post("/{guest_id}/deep-followup")
+async def deep_followup(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+    """继续追问：用 Opus 对采访策划做二次深度打磨"""
+    guest = await db_service.get_guest(db, guest_id)
+    if not guest:
+        raise HTTPException(status_code=404, detail="嘉宾不存在")
+
+    # 找到最新的采访策划方案
+    analyses = await db_service.get_guest_analyses(db, guest_id)
+    interview_plan = ""
+    for a in analyses:
+        if a["analysis_type"] == "interview":
+            interview_plan = a.get("content", {}).get("result", "")
+            break
+
+    if not interview_plan:
+        raise HTTPException(status_code=400, detail="请先生成采访策划方案")
+
+    guest_name = guest["name"]
+    custom_prompt = body.get("prompt", "")
+
+    async def _bg_followup():
+        try:
+            # 读取自定义提示词
+            prompt = custom_prompt
+            if not prompt:
+                async with async_session() as s:
+                    prompts = await db_service.get_ai_prompts(s)
+                    for p in prompts:
+                        if p["name"] == "继续追问":
+                            prompt = p["content"]
+                            break
+
+            result = await ai_service.deep_follow_up(guest_name, interview_plan, prompt)
+            async with async_session() as session:
+                await db_service.save_guest_analysis(session, guest_id, "followup", result)
+            logger.info(f"继续追问完成: {guest_name}")
+        except Exception as e:
+            logger.error(f"继续追问失败: {e}", exc_info=True)
+
+    asyncio.create_task(_bg_followup())
+    return {"ok": True, "message": "继续追问分析中，请稍候刷新查看结果"}
+
+
 @router.get("/{guest_id}/analyses")
 async def list_analyses(guest_id: int, db: AsyncSession = Depends(get_db)):
     try:
