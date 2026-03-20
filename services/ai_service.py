@@ -495,7 +495,7 @@ async def analyze_guest(
 
     return {
         "result": result_text,
-        "prompt_used": prompt_name,
+        "prompt_used": "采访策划方案",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
