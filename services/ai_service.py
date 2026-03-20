@@ -270,33 +270,6 @@ DEFAULT_PROMPTS = {
 
 请确保搜索的是最新的、当下正在讨论的话题，不要用过时的热点。""",
 
-    "AI侦查员": """你是「继续追问」节目的AI侦查员，负责分析嘉宾在抖音上已有的视频内容。
-
-你将收到嘉宾相关的抖音视频搜索数据。请进行深度分析：
-
-## 一、内容概览
-- 此嘉宾在抖音上的内容类型分布
-- 最活跃的创作者/账号是谁在做此人的内容
-
-## 二、爆款分析 TOP5
-列出播放量/互动率最高的5条视频：
-- 标题/描述
-- 数据表现（播放、点赞、评论、收藏）
-- 为什么这条能火（选题、标题、钩子分析）
-- 评论区可能在讨论什么
-
-## 三、扑街分析
-有没有数据明显不好的内容？为什么扑了？
-
-## 四、内容空白区
-- 哪些角度已经被做烂了（我们要避开）
-- 哪些角度还没人做但有潜力（我们的机会）
-
-## 五、竞品避让建议
-基于已有内容，我们的采访切片应该避开什么角度，主攻什么方向
-
-请用数据说话，每个结论都要有具体视频数据支撑。""",
-
     "AI嘉宾替身": """你扮演采访嘉宾，正在接受「继续追问」节目的采访。
 
 请根据提供的研究资料还原此人的说话风格、观点立场和思维方式来回答问题：
@@ -720,57 +693,6 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     return {
         "result": result_text,
         "prompt_used": "AI内容编导",
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-    }
-
-
-async def scout_review(guest_name: str, guest_description: str, douyin_videos: list[dict], custom_prompt: str = "") -> dict:
-    """AI侦查员：分析嘉宾在抖音上已有的视频内容"""
-    if not settings.ANTHROPIC_API_KEY:
-        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
-
-    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI侦查员", "")
-    desc_hint = f"（{guest_description}）" if guest_description else ""
-
-    # 格式化视频数据
-    video_lines = [f"# 嘉宾：{guest_name}{desc_hint}\n\n# 抖音搜索结果（共{len(douyin_videos)}条）\n"]
-    for i, v in enumerate(douyin_videos, 1):
-        create_time = ""
-        if v.get("create_time") and isinstance(v["create_time"], (int, float)) and v["create_time"] > 0:
-            try:
-                from datetime import datetime as dt
-                create_time = dt.fromtimestamp(v["create_time"]).strftime("%Y-%m-%d")
-            except Exception:
-                create_time = str(v["create_time"])
-
-        video_lines.append(f"## 视频 {i}")
-        video_lines.append(f"- 描述：{v.get('desc', '(无)')}")
-        video_lines.append(f"- 作者：{v.get('author_nickname', '')} (@{v.get('author_unique_id', '')})")
-        video_lines.append(f"- 粉丝数：{v.get('author_follower_count', 0):,}")
-        video_lines.append(f"- 播放：{v.get('play_count', 0):,} | 点赞：{v.get('digg_count', 0):,} | 评论：{v.get('comment_count', 0):,} | 收藏：{v.get('collect_count', 0):,} | 转发：{v.get('share_count', 0):,}")
-        if create_time:
-            video_lines.append(f"- 发布时间：{create_time}")
-        video_lines.append("")
-
-    user_text = "\n".join(video_lines) + "\n请分析以上视频数据。"
-
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-    try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_text}],
-        )
-        result_text = message.content[0].text
-    except Exception as e:
-        logger.error(f"AI侦查员分析失败: {e}", exc_info=True)
-        result_text = f"分析失败：{str(e)}"
-
-    return {
-        "result": result_text,
-        "prompt_used": "AI侦查员",
-        "video_count": len(douyin_videos),
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 

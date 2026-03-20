@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services import db_service, ai_service, tikhub_service
+from services import db_service, ai_service
 from services.web_fetcher import fetch_page_text, extract_urls_from_text
 from database import get_db, async_session
 
@@ -204,55 +204,6 @@ async def delete_material(guest_id: int, material_id: int, db: AsyncSession = De
     return {"ok": True}
 
 
-@router.post("/{guest_id}/scout")
-async def scout_guest(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
-    """AI侦查员：搜索并分析嘉宾在抖音上已有的视频内容"""
-    guest = await db_service.get_guest(db, guest_id)
-    if not guest:
-        raise HTTPException(status_code=404, detail="嘉宾不存在")
-
-    guest_name = guest["name"]
-    guest_desc = guest["description"]
-    custom_prompt = body.get("prompt", "")
-
-    async def _bg_scout():
-        try:
-            # 用嘉宾名字搜索抖音视频
-            videos = await tikhub_service.search_douyin_videos(guest_name, count=20)
-
-            # 如果有身份描述，再搜一轮
-            if guest_desc:
-                videos2 = await tikhub_service.search_douyin_videos(f"{guest_name} {guest_desc}", count=20)
-                seen_ids = {v["aweme_id"] for v in videos}
-                for v in videos2:
-                    if v["aweme_id"] not in seen_ids:
-                        videos.append(v)
-                        seen_ids.add(v["aweme_id"])
-
-            if not videos:
-                result = {"result": f"在抖音上未搜索到与「{guest_name}」相关的视频内容", "created_at": ""}
-            else:
-                # 读取自定义提示词
-                prompt = custom_prompt
-                if not prompt:
-                    async with async_session() as s:
-                        prompts = await db_service.get_ai_prompts(s)
-                        for p in prompts:
-                            if p["name"] == "AI侦查员":
-                                prompt = p["content"]
-                                break
-                result = await ai_service.scout_review(guest_name, guest_desc, videos, prompt)
-
-            async with async_session() as session:
-                await db_service.save_guest_analysis(session, guest_id, "scout", result)
-            logger.info(f"AI侦查员完成: {guest_name}, 分析{len(videos)}条视频")
-        except Exception as e:
-            logger.error(f"AI侦查员失败: {e}", exc_info=True)
-
-    asyncio.create_task(_bg_scout())
-    return {"ok": True, "message": "AI侦查员工作中，请稍候刷新查看结果"}
-
-
 @router.post("/{guest_id}/analyze")
 async def analyze_guest_endpoint(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
     guest = await db_service.get_guest(db, guest_id)
@@ -359,16 +310,7 @@ async def trending_review(guest_id: int, body: dict, db: AsyncSession = Depends(
                             prompt = p["content"]
                             break
 
-            # 用 TikHub 搜索嘉宾相关的近期热门视频，作为额外上下文
-            trending_videos = await tikhub_service.search_douyin_videos(guest_name, count=10)
-            trending_context = ""
-            if trending_videos:
-                lines = ["\n\n# 抖音近期相关视频（TikHub数据）\n"]
-                for i, v in enumerate(trending_videos[:10], 1):
-                    lines.append(f"{i}. 「{v.get('desc', '')}」 播放{v.get('play_count', 0):,} 点赞{v.get('digg_count', 0):,}")
-                trending_context = "\n".join(lines)
-
-            result = await ai_service.trending_review(guest_name, guest_desc, interview_plan + trending_context, prompt)
+            result = await ai_service.trending_review(guest_name, guest_desc, interview_plan, prompt)
             async with async_session() as session:
                 await db_service.save_guest_analysis(session, guest_id, "trending", result)
             logger.info(f"AI热点编导完成: {guest_name}")
