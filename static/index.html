@@ -1029,7 +1029,13 @@
                     <span x-text="guestClipReviewing ? '工作中...' : 'AI切片编导'"></span>
                   </button>
                 </div>
-                <p class="text-[10px] text-gray-400 mt-1">Opus · 需先完成策划专员 | 内容编导：深度追问设计 · 切片编导：标题/钩子/金句/评论引爆</p>
+                <button @click="runTrendingReview()" :disabled="guestTrendingReviewing || !guestAnalyses.some(a => a.analysis_type === 'interview')"
+                  class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all mt-3"
+                  :class="guestTrendingReviewing ? 'bg-rose-50 border-rose-300 text-rose-700' : 'border-gray-200 hover:border-rose-300 hover:bg-rose-50 text-gray-700 disabled:opacity-40 disabled:hover:bg-white disabled:hover:border-gray-200'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  <span x-text="guestTrendingReviewing ? '工作中...' : 'AI热点编导'"></span>
+                </button>
+                <p class="text-[10px] text-gray-400 mt-1">Opus: 内容编导 · 切片编导 | Sonnet+搜索: 热点编导 | 均需先完成策划专员</p>
               </div>
 
               <!-- AI嘉宾替身 -->
@@ -1072,7 +1078,7 @@
                       class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
                       <div class="flex items-center gap-3">
                         <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                          :class="{'bg-blue-100 text-blue-700': a.analysis_type === 'interview', 'bg-purple-100 text-purple-700': a.analysis_type === 'followup', 'bg-orange-100 text-orange-700': a.analysis_type === 'clip'}"
+                          :class="{'bg-blue-100 text-blue-700': a.analysis_type === 'interview', 'bg-purple-100 text-purple-700': a.analysis_type === 'followup', 'bg-orange-100 text-orange-700': a.analysis_type === 'clip', 'bg-rose-100 text-rose-700': a.analysis_type === 'trending'}"
                           x-text="guestAnalysisLabel(a.analysis_type)"></span>
                         <span class="text-xs text-gray-400" x-text="a.content?.created_at || a.created_at"></span>
                       </div>
@@ -1211,6 +1217,7 @@ function app() {
     guestAnalysisExpanded: null,
     guestFollowingUp: false,
     guestClipReviewing: false,
+    guestTrendingReviewing: false,
     guestChatHistory: [],
     guestChatInput: '',
     guestChatLoading: false,
@@ -1984,7 +1991,25 @@ function app() {
       } catch (e) { /* ignore */ }
     },
     guestAnalysisLabel(type) {
-      return { interview: 'AI策划专员', followup: 'AI内容编导', clip: 'AI切片编导' }[type] || type;
+      return { interview: 'AI策划专员', followup: 'AI内容编导', clip: 'AI切片编导', trending: 'AI热点编导' }[type] || type;
+    },
+    async runTrendingReview() {
+      if (!this.selectedGuest || this.guestTrendingReviewing) return;
+      this.guestTrendingReviewing = true; this.guestError = '';
+      try {
+        if (!this.aiPrompts.length) await this.loadAiPrompts();
+        const p = this.aiPrompts.find(p => p.name === 'AI热点编导');
+        await this.api('POST', '/guest/' + this.selectedGuest.id + '/trending-review', {
+          prompt: p?.content || '',
+        });
+        const prevCount = this.guestAnalyses.length;
+        for (let i = 0; i < 40; i++) {
+          await new Promise(r => setTimeout(r, 3000));
+          await this.loadGuestAnalyses(this.selectedGuest.id);
+          if (this.guestAnalyses.length > prevCount) break;
+        }
+      } catch (e) { this.guestError = 'AI热点编导失败: ' + e.message; }
+      this.guestTrendingReviewing = false;
     },
     async runDeepFollowup() {
       if (!this.selectedGuest || this.guestFollowingUp) return;

@@ -241,6 +241,35 @@ DEFAULT_PROMPTS = {
 
 请始终从"一个用户在刷抖音时滑到这条切片"的场景出发思考。""",
 
+    "AI热点编导": """你是「继续追问」节目的AI热点编导，专精于社交媒体热点趋势和内容传播。
+
+你将收到一位嘉宾的采访策划方案。请搜索当下最新的社会热点、行业动态和公众讨论话题，找到与这位嘉宾专业领域的交叉点。
+
+## 一、热点扫描
+搜索近1-2周内与此嘉宾领域相关的热点话题（抖音热搜、微博热搜、新闻热点等），列出 TOP5-8 个：
+每个热点：
+- **话题**：一句话概括
+- **热度来源**：在哪个平台火的
+- **与嘉宾的关联**：此人的专业背景为什么有资格谈这个话题
+
+## 二、热点嫁接问题设计
+为每个相关热点设计 1-2 个采访问题：
+- 问题要自然地将热点话题和嘉宾的经验/观点关联起来
+- 不是生硬地"你怎么看XX热搜"，而是找到深层连接
+- 每个问题附追问方向
+
+## 三、热点切片预判
+从设计的热点问题中，挑出最有爆款潜力的 TOP3：
+- 预设切片标题（蹭热点但不标题党）
+- 为什么这个话题+这个嘉宾的组合能火
+- 最佳发布时间窗口建议（热点有时效性）
+
+## 四、风险提示
+- 哪些热点话题可能有政治/舆论风险，建议谨慎或回避
+- 哪些热点已经过气，不建议再蹭
+
+请确保搜索的是最新的、当下正在讨论的话题，不要用过时的热点。""",
+
     "AI嘉宾替身": """你扮演采访嘉宾，正在接受「继续追问」节目的采访。
 
 请根据提供的研究资料还原此人的说话风格、观点立场和思维方式来回答问题：
@@ -664,6 +693,39 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     return {
         "result": result_text,
         "prompt_used": "AI内容编导",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+async def trending_review(guest_name: str, guest_description: str, interview_plan: str, custom_prompt: str = "") -> dict:
+    """AI热点编导：搜索热点话题并嫁接到采访问题"""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"result": "错误：ANTHROPIC_API_KEY 未配置", "created_at": ""}
+
+    system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI热点编导", "")
+    desc_hint = f"（{guest_description}）" if guest_description else ""
+    user_text = f"# 嘉宾：{guest_name}{desc_hint}\n\n# 已有采访策划方案\n\n{interview_plan}\n\n请搜索当下热点话题，找到与这位嘉宾的交叉点，设计热点嫁接问题。"
+
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=8096,
+            tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_text}],
+        )
+        result_text = ""
+        for block in message.content:
+            if block.type == "text":
+                result_text += block.text
+    except Exception as e:
+        logger.error(f"AI热点编导失败: {e}", exc_info=True)
+        result_text = f"分析失败：{str(e)}"
+
+    return {
+        "result": result_text,
+        "prompt_used": "AI热点编导",
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 

@@ -278,6 +278,49 @@ async def deep_followup(guest_id: int, body: dict, db: AsyncSession = Depends(ge
     return {"ok": True, "message": "AI内容编导分析中，请稍候刷新查看结果"}
 
 
+@router.post("/{guest_id}/trending-review")
+async def trending_review(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
+    """AI热点编导：搜索热点话题嫁接到采访问题"""
+    guest = await db_service.get_guest(db, guest_id)
+    if not guest:
+        raise HTTPException(status_code=404, detail="嘉宾不存在")
+
+    analyses = await db_service.get_guest_analyses(db, guest_id)
+    interview_plan = ""
+    for a in analyses:
+        if a["analysis_type"] == "interview":
+            interview_plan = a.get("content", {}).get("result", "")
+            break
+
+    if not interview_plan:
+        raise HTTPException(status_code=400, detail="请先生成采访策划方案")
+
+    guest_name = guest["name"]
+    guest_desc = guest["description"]
+    custom_prompt = body.get("prompt", "")
+
+    async def _bg_trending():
+        try:
+            prompt = custom_prompt
+            if not prompt:
+                async with async_session() as s:
+                    prompts = await db_service.get_ai_prompts(s)
+                    for p in prompts:
+                        if p["name"] == "AI热点编导":
+                            prompt = p["content"]
+                            break
+
+            result = await ai_service.trending_review(guest_name, guest_desc, interview_plan, prompt)
+            async with async_session() as session:
+                await db_service.save_guest_analysis(session, guest_id, "trending", result)
+            logger.info(f"AI热点编导完成: {guest_name}")
+        except Exception as e:
+            logger.error(f"AI热点编导失败: {e}", exc_info=True)
+
+    asyncio.create_task(_bg_trending())
+    return {"ok": True, "message": "AI热点编导分析中，请稍候刷新查看结果"}
+
+
 @router.post("/{guest_id}/clip-review")
 async def clip_review(guest_id: int, body: dict, db: AsyncSession = Depends(get_db)):
     """AI切片编导：从传播和算法角度审视策划方案"""
