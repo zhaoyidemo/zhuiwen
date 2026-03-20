@@ -491,10 +491,11 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
     else:
         extra_kw_list = []
 
-    # 前两轮：固定角度搜索
+    # 前三轮：固定角度搜索（含微信公众号定向）
     search_rounds = [
         f"{base_instruction}\n本轮重点：深度采访、专访文章、对话记录、播客节目。\n搜索关键词建议：{guest_name} 采访、{guest_name} 专访、{guest_name} 对话、{guest_name} 播客。{output_format}",
         f"{base_instruction}\n本轮重点：演讲发言、观点评论、深度报道、人物特写。\n搜索关键词建议：{guest_name} 演讲、{guest_name} 观点、{guest_name} 报道、{guest_name} 人物。{output_format}",
+        f"{base_instruction}\n本轮重点：微信公众号文章。请专门搜索此人在微信公众号上的采访、对话、观点文章。\n搜索关键词建议：site:mp.weixin.qq.com {guest_name}、{guest_name} 微信公众号 采访、{guest_name} 微信 专访。{output_format}",
     ]
 
     # 如果有补充关键词，加一轮定向搜索
