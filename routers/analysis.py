@@ -2,18 +2,19 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from models.api_models import ok
 from models.schemas import AnalysisRequest
 from services import ai_service, feishu_service
 from config import settings
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/analysis", tags=["AI 分析"])
+router = APIRouter(prefix="/api/analysis", tags=["AI 分析（飞书）"])
 
 
-@router.post("/run")
+@router.post("/run",
+    summary="飞书批量 AI 分析",
+    description="从飞书多维表读取视频数据，调用 Claude 进行批量分析，结果写回飞书")
 async def run_analysis(req: AnalysisRequest):
-    """运行 AI 分析"""
-    # 从飞书获取视频数据
     videos = []
     if req.video_ids:
         try:
@@ -37,7 +38,6 @@ async def run_analysis(req: AnalysisRequest):
         custom_prompt=req.custom_prompt,
     )
 
-    # 可选：将分析结果写入飞书
     try:
         tid = settings.FEISHU_TABLE_ANALYSES
         if tid:
@@ -52,4 +52,4 @@ async def run_analysis(req: AnalysisRequest):
     except Exception as e:
         logger.warning(f"写入分析记录到飞书失败: {e}")
 
-    return result
+    return ok(result)
