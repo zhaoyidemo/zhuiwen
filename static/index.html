@@ -1537,7 +1537,7 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const aiPrompt = this.aiPrompts.find(p => p.name === 'AI洞察');
-        const res = await this.api('POST', '/favorites/' + v.aweme_id + '/actions/plan', {
+        const res = await this.api('POST', '/favorites/' + v.aweme_id + '/analyze', {
           prompt: aiPrompt?.content || '',
           video_data: v,
         });
@@ -1645,7 +1645,7 @@ function app() {
       state.loading = true; state.failed = false;
       this.xingtuLoading = true;
       try {
-        const res = await this.api('GET', `/account/${acc.sec_user_id}/xingtu/${module}?refresh=${refresh}`);
+        const res = await this.api('GET', `/accounts/${acc.sec_user_id}/xingtu/${module}?refresh=${refresh}`);
         const dataKey = keyMap[module];
         if (!this.xingtuData) this.xingtuData = {};
         this.xingtuData = { ...this.xingtuData, [dataKey]: res[dataKey] };
@@ -1932,7 +1932,7 @@ function app() {
     async deleteGuest(guest) {
       if (!confirm('确定删除嘉宾「' + guest.name + '」及其所有资料？')) return;
       try {
-        await this.api('DELETE', '/guest/' + guest.id);
+        await this.api('DELETE', '/guests/' + guest.id);
         this.guests = this.guests.filter(g => g.id !== guest.id);
         if (this.selectedGuest?.id === guest.id) {
           this.selectedGuest = null;
@@ -1950,13 +1950,13 @@ function app() {
     },
     async loadGuestMaterials(guestId) {
       try {
-        const res = await this.api('GET', '/guest/' + guestId + '/materials');
+        const res = await this.api('GET', '/guests/' + guestId + '/materials');
         this.guestMaterials = res.materials || [];
       } catch (e) { this.guestMaterials = []; }
     },
     async loadGuestAnalyses(guestId) {
       try {
-        const res = await this.api('GET', '/guest/' + guestId + '/analyses');
+        const res = await this.api('GET', '/guests/' + guestId + '/analyses');
         this.guestAnalyses = res.analyses || [];
       } catch (e) { this.guestAnalyses = []; }
     },
@@ -1964,7 +1964,7 @@ function app() {
       if (!this.selectedGuest || this.guestSearching) return;
       this.guestSearching = true; this.guestError = '';
       try {
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/search', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/search', {
           extra_keywords: this.extraSearchKeywords,
         });
         // 后台搜索中，轮询等待素材出现
@@ -1981,7 +1981,7 @@ function app() {
       if (!this.selectedGuest || !this.newMaterialUrl.trim()) return;
       this.guestError = '';
       try {
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/materials', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/materials', {
           url: this.newMaterialUrl.trim(),
           platform: this.newMaterialPlatform,
           title: this.newMaterialTitle.trim(),
@@ -1995,7 +1995,7 @@ function app() {
     async deleteGuestMaterial(mid) {
       if (!this.selectedGuest) return;
       try {
-        await this.api('DELETE', '/guest/' + this.selectedGuest.id + '/materials/' + mid);
+        await this.api('DELETE', '/guests/' + this.selectedGuest.id + '/materials/' + mid);
         this.guestMaterials = this.guestMaterials.filter(m => m.id !== mid);
       } catch (e) { /* ignore */ }
     },
@@ -2005,7 +2005,7 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI策划专员');
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/plan', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/plan', {
           prompt: p?.content || '',
         });
         // 后台分析中，轮询等待结果
@@ -2021,7 +2021,7 @@ function app() {
     async deleteGuestAnalysis(aid) {
       if (!this.selectedGuest) return;
       try {
-        await this.api('DELETE', '/guest/' + this.selectedGuest.id + '/analyses/' + aid);
+        await this.api('DELETE', '/guests/' + this.selectedGuest.id + '/analyses/' + aid);
         this.guestAnalyses = this.guestAnalyses.filter(a => a.id !== aid);
       } catch (e) { /* ignore */ }
     },
@@ -2034,7 +2034,7 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI热点编导');
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/trending', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/trending', {
           prompt: p?.content || '',
         });
         const prevCount = this.guestAnalyses.length;
@@ -2052,7 +2052,7 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI内容编导');
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/content', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/content', {
           prompt: p?.content || '',
         });
         const prevCount = this.guestAnalyses.length;
@@ -2070,7 +2070,7 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI切片编导');
-        await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/clip', {
+        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/clip', {
           prompt: p?.content || '',
         });
         const prevCount = this.guestAnalyses.length;
@@ -2089,7 +2089,7 @@ function app() {
       this.guestChatInput = '';
       this.guestChatLoading = true;
       try {
-        const res = await this.api('POST', '/guest/' + this.selectedGuest.id + '/actions/chat', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/chat', {
           message: msg,
           history: this.guestChatHistory.slice(0, -1),
         });
@@ -2104,7 +2104,7 @@ function app() {
       const content = prompt('粘贴文章/转录内容：', m.content || '');
       if (content === null) return;
       try {
-        await this.api('PUT', '/guest/' + this.selectedGuest.id + '/materials/' + m.id, { content });
+        await this.api('PUT', '/guests/' + this.selectedGuest.id + '/materials/' + m.id, { content });
         m.content = content;
         m.status = content ? 'verified' : m.status;
       } catch (e) { /* ignore */ }
@@ -2113,7 +2113,7 @@ function app() {
       if (!this.selectedGuest) return;
       const newStatus = m.status === 'excluded' ? 'verified' : 'excluded';
       try {
-        await this.api('PUT', '/guest/' + this.selectedGuest.id + '/materials/' + m.id, { status: newStatus });
+        await this.api('PUT', '/guests/' + this.selectedGuest.id + '/materials/' + m.id, { status: newStatus });
         m.status = newStatus;
       } catch (e) { /* ignore */ }
     },
