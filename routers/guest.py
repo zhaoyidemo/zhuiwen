@@ -8,7 +8,7 @@ from models.api_models import (
     GuestCreateRequest, GuestSearchRequest, MaterialAddRequest,
     MaterialUpdateRequest, GuestAnalyzeRequest, GuestChatRequest, ok,
 )
-from services import db_service, ai_service, task_service
+from services import db_service, ai_service, task_service, tikhub_service
 from services.web_fetcher import fetch_page_text, extract_urls_from_text
 from database import get_db, async_session
 
@@ -209,12 +209,68 @@ async def search_guest(guest_id: int, req: GuestSearchRequest = None, db: AsyncS
                         else:
                             await db_service.update_guest_material_status(session, mat["id"], "failed")
 
+            # 抖音站内搜索
+            task_service.update_progress(task_id, "搜索抖音站内内容...")
+            douyin_added = 0
+            try:
+                async with async_session() as session:
+                    all_mats = await db_service.get_guest_materials(session, guest_id)
+                all_urls = {m["url"] for m in all_mats if m.get("url")}
+
+                # 搜用户：找嘉宾的抖音号
+                dy_users = await tikhub_service.search_douyin_users(guest_name, count=5)
+                async with async_session() as session:
+                    for u in dy_users:
+                        if u["follower_count"] < 1000:
+                            continue
+                        profile_url = f"https://www.douyin.com/user/{u['sec_uid']}" if u['sec_uid'] else ""
+                        if profile_url and profile_url in all_urls:
+                            continue
+                        fmtfans = f"{u['follower_count']/10000:.1f}万" if u['follower_count'] >= 10000 else str(u['follower_count'])
+                        await db_service.add_guest_material(session, guest_id, {
+                            "type": "douyin_account", "platform": "抖音",
+                            "url": profile_url,
+                            "title": f"[抖音账号] {u['nickname']} (@{u['unique_id']}) {fmtfans}粉丝",
+                            "summary": u.get("signature", ""),
+                            "status": "verified",
+                            "raw_data": u,
+                        })
+                        all_urls.add(profile_url)
+                        douyin_added += 1
+
+                # 搜视频：找嘉宾相关的抖音视频
+                dy_videos = await tikhub_service.search_douyin_videos(guest_name, count=10)
+                async with async_session() as session:
+                    for v in dy_videos:
+                        if not v.get("aweme_id"):
+                            continue
+                        vid_url = v["url"]
+                        if vid_url in all_urls:
+                            continue
+                        # 筛选：标题含嘉宾名 或 播放量 > 1万
+                        if guest_name not in v.get("desc", "") and v.get("play_count", 0) < 10000:
+                            continue
+                        fmtplay = f"{v['play_count']/10000:.1f}万" if v['play_count'] >= 10000 else str(v['play_count'])
+                        await db_service.add_guest_material(session, guest_id, {
+                            "type": "douyin_video", "platform": "抖音",
+                            "url": vid_url,
+                            "title": f"[抖音视频] {v['desc'][:80]}",
+                            "summary": f"作者: {v['author_nickname']} | 播放{fmtplay} | 点赞{v['digg_count']} | 评论{v['comment_count']}",
+                            "status": "verified",
+                            "raw_data": v,
+                        })
+                        all_urls.add(vid_url)
+                        douyin_added += 1
+            except Exception as e:
+                logger.warning(f"抖音站内搜索失败（不影响整体）: {e}")
+
             task_service.complete_task(task_id, {
                 "new": len(saved_ids), "skipped": skipped,
                 "verified": verified, "failed": failed,
                 "ref_discovered": len(discovered_urls), "ref_verified": ref_verified,
+                "douyin_added": douyin_added,
             })
-            logger.info(f"AI调查员完成: {guest_name}, 新增{len(saved_ids)}, 验证{verified}, 引用链{ref_verified}")
+            logger.info(f"AI调查员完成: {guest_name}, 新增{len(saved_ids)}, 验证{verified}, 引用链{ref_verified}, 抖音{douyin_added}")
         except Exception as e:
             logger.error(f"AI调查员失败: {e}", exc_info=True)
             task_service.fail_task(task_id, str(e))
@@ -376,6 +432,16 @@ async def trending_review(guest_id: int, req: GuestAnalyzeRequest = None, db: As
 
     async def _bg():
         try:
+            task_service.update_progress(task_id, "获取抖音实时热搜...")
+            hot_search_text = ""
+            try:
+                hot_list = await tikhub_service.fetch_hot_search_list()
+                if hot_list:
+                    lines = [f"{i+1}. {h['word']}" + (f" ({h['label']})" if h.get('label') else "") for i, h in enumerate(hot_list[:30])]
+                    hot_search_text = "\n\n## 当前抖音热搜（实时数据）\n" + "\n".join(lines)
+            except Exception as e:
+                logger.warning(f"获取抖音热搜失败（不影响整体）: {e}")
+
             task_service.update_progress(task_id, "AI热点编导搜索热点中...")
             prompt = custom_prompt
             if not prompt:
@@ -385,7 +451,12 @@ async def trending_review(guest_id: int, req: GuestAnalyzeRequest = None, db: As
                         if p["name"] == "AI热点编导":
                             prompt = p["content"]
                             break
-            result = await ai_service.trending_review(guest_name, guest_desc, interview_plan, prompt)
+
+            # 把抖音热搜注入到采访方案末尾，让 Claude 一起参考
+            plan_with_hot = interview_plan
+            if hot_search_text:
+                plan_with_hot = interview_plan + hot_search_text
+            result = await ai_service.trending_review(guest_name, guest_desc, plan_with_hot, prompt)
             async with async_session() as session:
                 await db_service.save_guest_analysis(session, guest_id, "trending", result)
             task_service.complete_task(task_id, {"analysis_type": "trending"})

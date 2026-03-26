@@ -742,3 +742,98 @@ async def fetch_comment_replies(aweme_id: str, comment_id: str, cursor: int = 0,
     except Exception as e:
         logger.warning(f"获取评论回复失败: {e}")
         return {"replies": [], "has_more": False, "next_cursor": 0}
+
+
+# ---- 抖音搜索 ----
+
+async def search_douyin_users(keyword: str, count: int = 10, cursor: int = 0) -> list[dict]:
+    """抖音站内搜索用户"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/search/fetch_user_search",
+            params={"keyword": keyword, "count": count, "cursor": cursor},
+        )
+        user_list = _extract_list(data, "user_list", "users", "data_list")
+        results = []
+        for item in user_list:
+            user_info = item.get("user_info", {}) or item
+            avatar = user_info.get("avatar_thumb", {}) or {}
+            avatar_url = ""
+            if isinstance(avatar, dict):
+                url_list = avatar.get("url_list", [])
+                avatar_url = url_list[0] if url_list else ""
+            elif isinstance(avatar, str):
+                avatar_url = avatar
+            results.append({
+                "uid": str(user_info.get("uid", "")),
+                "sec_uid": user_info.get("sec_uid", ""),
+                "unique_id": user_info.get("unique_id", "") or user_info.get("short_id", ""),
+                "nickname": user_info.get("nickname", ""),
+                "signature": user_info.get("signature", ""),
+                "follower_count": user_info.get("follower_count", 0) or 0,
+                "avatar_url": avatar_url,
+            })
+        logger.info(f"抖音用户搜索: keyword={keyword}, 结果{len(results)}条")
+        return results
+    except Exception as e:
+        logger.warning(f"抖音用户搜索失败: {e}")
+        return []
+
+
+async def search_douyin_videos(keyword: str, count: int = 10, cursor: int = 0) -> list[dict]:
+    """抖音站内搜索视频"""
+    try:
+        data = await _request(
+            "GET",
+            "/api/v1/douyin/search/fetch_video_search_v1",
+            params={"keyword": keyword, "count": count, "cursor": cursor},
+        )
+        aweme_list = _extract_list(data, "aweme_list", "data", "data_list")
+        results = []
+        for item in aweme_list:
+            if not isinstance(item, dict):
+                continue
+            aweme = item.get("aweme_info", {}) or item
+            statistics = aweme.get("statistics", {}) or {}
+            author = aweme.get("author", {}) or {}
+            desc = aweme.get("desc", "")
+            results.append({
+                "aweme_id": str(aweme.get("aweme_id", "")),
+                "desc": desc,
+                "author_nickname": author.get("nickname", ""),
+                "play_count": statistics.get("play_count", 0) or 0,
+                "digg_count": statistics.get("digg_count", 0) or 0,
+                "comment_count": statistics.get("comment_count", 0) or 0,
+                "collect_count": statistics.get("collect_count", 0) or 0,
+                "share_count": statistics.get("share_count", 0) or 0,
+                "url": f"https://www.douyin.com/video/{aweme.get('aweme_id', '')}",
+            })
+        logger.info(f"抖音视频搜索: keyword={keyword}, 结果{len(results)}条")
+        return results
+    except Exception as e:
+        logger.warning(f"抖音视频搜索失败: {e}")
+        return []
+
+
+async def fetch_hot_search_list() -> list[dict]:
+    """获取抖音实时热搜榜"""
+    try:
+        data = await _request("GET", "/api/v1/douyin/app/v3/fetch_hot_search_list")
+        raw_list = _extract_list(data, "data", "word_list", "trending_list")
+        results = []
+        for item in raw_list:
+            word = item.get("word", "") or item.get("sentence_tag", "") or item.get("query", "")
+            if not word:
+                continue
+            results.append({
+                "word": word,
+                "hot_value": item.get("hot_value", 0) or item.get("score", 0) or 0,
+                "label": item.get("label", "") or item.get("word_sub_board", "") or "",
+                "position": item.get("position", 0) or len(results) + 1,
+            })
+        logger.info(f"抖音热搜获取: {len(results)}条")
+        return results
+    except Exception as e:
+        logger.warning(f"获取抖音热搜失败: {e}")
+        return []
