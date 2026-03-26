@@ -361,7 +361,7 @@ async def analyze_single_video(
 
     try:
         message = await client.messages.create(
-            model="claude-opus-4-6-20250415",
+            model="claude-opus-4-6",
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": _build_content(use_cover)}],
@@ -373,7 +373,7 @@ async def analyze_single_video(
             logger.warning(f"带封面分析失败，不带图重试: {e}")
             try:
                 message = await client.messages.create(
-                    model="claude-opus-4-6-20250415",
+                    model="claude-opus-4-6",
                     max_tokens=4096,
                     system=system_prompt,
                     messages=[{"role": "user", "content": _build_content(False)}],
@@ -424,7 +424,7 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
 
     try:
         message = await client.messages.create(
-            model="claude-opus-4-6-20250415",
+            model="claude-opus-4-6",
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": content}],
@@ -436,7 +436,7 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
         try:
             fallback_content = [{"type": "text", "text": f"{video_text}\n\n（截帧图片发送失败，请仅根据文本数据分析该视频可能的前5秒策略）"}]
             message = await client.messages.create(
-                model="claude-opus-4-6-20250415",
+                model="claude-opus-4-6",
                 max_tokens=4096,
                 system=system_prompt,
                 messages=[{"role": "user", "content": fallback_content}],
@@ -542,7 +542,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
     async def _run_round(prompt, round_num):
         try:
             response = await client.messages.create(
-                model="claude-sonnet-4-6-20250414",
+                model="claude-sonnet-4-6",
                 max_tokens=8096,
                 tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
                 messages=[{"role": "user", "content": prompt}],
@@ -652,7 +652,7 @@ async def analyze_guest(
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = await client.messages.create(
-            model="claude-sonnet-4-6-20250414",
+            model="claude-sonnet-4-6",
             max_tokens=50000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
@@ -680,7 +680,7 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = await client.messages.create(
-            model="claude-opus-4-6-20250415",
+            model="claude-opus-4-6",
             max_tokens=8096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
@@ -709,7 +709,7 @@ async def trending_review(guest_name: str, guest_description: str, interview_pla
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = await client.messages.create(
-            model="claude-sonnet-4-6-20250414",
+            model="claude-sonnet-4-6",
             max_tokens=8096,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
             system=system_prompt,
@@ -741,7 +741,7 @@ async def clip_review(guest_name: str, interview_plan: str, custom_prompt: str =
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = await client.messages.create(
-            model="claude-opus-4-6-20250415",
+            model="claude-opus-4-6",
             max_tokens=8096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
@@ -783,7 +783,7 @@ async def guest_chat(guest_name: str, analyses: list[dict], chat_history: list[d
     client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
         message = await client.messages.create(
-            model="claude-sonnet-4-6-20250414",
+            model="claude-sonnet-4-6",
             max_tokens=2048,
             system=system_prompt,
             messages=messages,

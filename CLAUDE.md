@@ -75,8 +75,8 @@ zhuiwen/
 
 ## 模型版本
 
-- Opus: `claude-opus-4-6-20250415`
-- Sonnet: `claude-sonnet-4-6-20250414`
+- Opus: `claude-opus-4-6`
+- Sonnet: `claude-sonnet-4-6`
 
 ## 注意事项
 

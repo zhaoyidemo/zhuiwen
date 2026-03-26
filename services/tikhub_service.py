@@ -750,9 +750,9 @@ async def search_douyin_users(keyword: str, count: int = 10, cursor: int = 0) ->
     """抖音站内搜索用户"""
     try:
         data = await _request(
-            "GET",
+            "POST",
             "/api/v1/douyin/search/fetch_user_search",
-            params={"keyword": keyword, "count": count, "cursor": cursor},
+            json_data={"keyword": keyword, "count": count, "cursor": cursor},
         )
         user_list = _extract_list(data, "user_list", "users", "data_list")
         results = []
@@ -785,9 +785,9 @@ async def search_douyin_videos(keyword: str, count: int = 10, cursor: int = 0) -
     """抖音站内搜索视频"""
     try:
         data = await _request(
-            "GET",
+            "POST",
             "/api/v1/douyin/search/fetch_video_search_v1",
-            params={"keyword": keyword, "count": count, "cursor": cursor},
+            json_data={"keyword": keyword, "count": count, "cursor": cursor},
         )
         aweme_list = _extract_list(data, "aweme_list", "data", "data_list")
         results = []
