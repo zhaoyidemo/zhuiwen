@@ -61,8 +61,8 @@ async def refresh_favorite(aweme_id: str, db: AsyncSession = Depends(get_db)):
                     share = video_data.get("share_count", 0) or 0
                     video_data["collect_rate"] = round(collect / play, 6)
                     video_data["engagement_rate"] = round((digg + comment + share + collect) / play, 6)
-            except Exception:
-                pass
+            except Exception as stat_err:
+                logger.warning(f"获取播放量统计失败（aweme_id={aweme_id}）: {stat_err}")
         await db_service.update_favorite(db, aweme_id, video_data)
         return ok({"data": video_data})
     except Exception as e:
@@ -79,15 +79,18 @@ async def analyze_favorite(aweme_id: str, body: AnalyzeRequest, db: AsyncSession
         raise HTTPException(status_code=400, detail="缺少视频数据")
 
     comments = []
+    comments_included = True
     try:
         comment_data = await tikhub_service.fetch_video_comments(aweme_id, cursor=0, count=50)
         comments = comment_data.get("comments", [])
     except Exception as e:
         logger.warning(f"获取评论失败: {e}")
+        comments_included = False
 
     analysis = await ai_service.analyze_single_video(
         video=video_data, comments=comments, prompt=body.prompt or None,
     )
+    analysis["comments_included"] = comments_included
     await db_service.save_ai_analysis(db, aweme_id, analysis)
     return ok(analysis)
 

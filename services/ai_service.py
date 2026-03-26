@@ -357,10 +357,10 @@ async def analyze_single_video(
             content.append({"type": "text", "text": f"{video_text}{comments_text}\n\n请根据以上数据进行分析。"})
         return content
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-opus-4-6-20250415",
             max_tokens=4096,
             system=system_prompt,
@@ -372,7 +372,7 @@ async def analyze_single_video(
         if use_cover:
             logger.warning(f"带封面分析失败，不带图重试: {e}")
             try:
-                message = client.messages.create(
+                message = await client.messages.create(
                     model="claude-opus-4-6-20250415",
                     max_tokens=4096,
                     system=system_prompt,
@@ -420,10 +420,10 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
 
     content.append({"type": "text", "text": f"\n\n{video_text}\n\n请根据以上截帧和视频数据，进行黄金前5秒分析。"})
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-opus-4-6-20250415",
             max_tokens=4096,
             system=system_prompt,
@@ -435,7 +435,7 @@ async def analyze_first_5s(video: dict, frame_data_uris: list[str], custom_promp
         # 带图失败时，尝试纯文本分析
         try:
             fallback_content = [{"type": "text", "text": f"{video_text}\n\n（截帧图片发送失败，请仅根据文本数据分析该视频可能的前5秒策略）"}]
-            message = client.messages.create(
+            message = await client.messages.create(
                 model="claude-opus-4-6-20250415",
                 max_tokens=4096,
                 system=system_prompt,
@@ -534,14 +534,14 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
             f"{base_instruction}\n本轮重点：使用用户指定的补充关键词搜索。\n搜索关键词：{kw_str}。{output_format}"
         )
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     all_results = []
     all_summaries = []
     seen_urls = set()
 
-    def _run_round(prompt, round_num):
+    async def _run_round(prompt, round_num):
         try:
-            response = client.messages.create(
+            response = await client.messages.create(
                 model="claude-sonnet-4-6-20250414",
                 max_tokens=8096,
                 tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
@@ -564,7 +564,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
             logger.error(f"嘉宾搜索第{round_num}轮失败: {e}")
 
     for i, prompt in enumerate(search_rounds, 1):
-        _run_round(prompt, i)
+        await _run_round(prompt, i)
 
     # 智能补搜：分析已有结果，搜索缺失的维度
     if len(all_results) > 0:
@@ -575,7 +575,7 @@ async def guest_web_search(guest_name: str, guest_description: str = "", custom_
 请分析还缺少哪些维度的资料（比如：是否缺少视频访谈？缺少某个时期的采访？缺少某个话题的讨论？），然后搜索补充。
 {desc_hint}{extra_hint}
 {output_format}"""
-        _run_round(gap_prompt, len(search_rounds) + 1)
+        await _run_round(gap_prompt, len(search_rounds) + 1)
 
     combined_summary = "\n\n---\n\n".join(all_summaries)
     logger.info(f"嘉宾搜索完成: {guest_name}, 共{len(all_results)}条链接")
@@ -649,9 +649,9 @@ async def analyze_guest(
     materials_text = _format_materials_context(guest_name, materials)
     user_text = f"{materials_text}\n请根据以上资料，先研究再输出段落式采访策划方案（20-25个段落）。"
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-sonnet-4-6-20250414",
             max_tokens=50000,
             system=system_prompt,
@@ -677,9 +677,9 @@ async def deep_follow_up(guest_name: str, interview_plan: str, custom_prompt: st
     system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI内容编导", "")
     user_text = f"# 嘉宾：{guest_name}\n\n# 已有采访策划方案\n\n{interview_plan}\n\n请在此基础上进行二次深度打磨。"
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-opus-4-6-20250415",
             max_tokens=8096,
             system=system_prompt,
@@ -706,9 +706,9 @@ async def trending_review(guest_name: str, guest_description: str, interview_pla
     desc_hint = f"（{guest_description}）" if guest_description else ""
     user_text = f"# 嘉宾：{guest_name}{desc_hint}\n\n# 已有采访策划方案\n\n{interview_plan}\n\n请搜索当下热点话题，找到与这位嘉宾的交叉点，设计热点嫁接问题。"
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-sonnet-4-6-20250414",
             max_tokens=8096,
             tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 10}],
@@ -738,9 +738,9 @@ async def clip_review(guest_name: str, interview_plan: str, custom_prompt: str =
     system_prompt = custom_prompt or DEFAULT_PROMPTS.get("AI切片编导", "")
     user_text = f"# 嘉宾：{guest_name}\n\n# 段落式采访策划方案\n\n{interview_plan}\n\n请从切片传播和算法推荐角度审视每个段落。"
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-opus-4-6-20250415",
             max_tokens=8096,
             system=system_prompt,
@@ -780,9 +780,9 @@ async def guest_chat(guest_name: str, analyses: list[dict], chat_history: list[d
         messages.append({"role": role, "content": msg.get("text", "")})
     messages.append({"role": "user", "content": user_message})
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
     try:
-        message = client.messages.create(
+        message = await client.messages.create(
             model="claude-sonnet-4-6-20250414",
             max_tokens=2048,
             system=system_prompt,

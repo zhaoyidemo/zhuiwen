@@ -681,8 +681,17 @@
 
         <!-- 爆款收藏 -->
         <div x-show="tab==='favorites'" class="p-6">
-          <h2 class="text-2xl font-bold text-gray-800 mb-1">爆款收藏</h2>
-          <p class="text-sm text-gray-500 mb-6">收藏的高质量视频，快照保存关键数据</p>
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-2xl font-bold text-gray-800 mb-1">爆款收藏</h2>
+              <p class="text-sm text-gray-500">收藏的高质量视频，快照保存关键数据</p>
+            </div>
+            <button x-show="favoriteVideos.length" @click="exportAllFavorites()"
+              class="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              导出全部
+            </button>
+          </div>
 
           <div x-show="favoriteVideos.length" class="space-y-6">
             <template x-for="(v, idx) in favoriteVideos" :key="v.aweme_id">
@@ -778,6 +787,11 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         取消收藏
                       </button>
+                      <button @click="exportFavorite(v)"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-sm hover:bg-gray-100 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        导出
+                      </button>
                       <button @click="runAiAnalysis(v, idx)"
                         class="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-all"
                         :class="aiAnalyzingId === v.aweme_id ? 'opacity-50 cursor-wait' : ''">
@@ -797,7 +811,9 @@
                     <!-- AI 分析结果 -->
                     <div x-show="v.ai_analysis?.result" class="mt-4 pt-4 border-t border-purple-100">
                       <div class="flex items-center justify-between mb-3">
-                        <h5 class="text-sm font-semibold text-purple-700">AI 洞察</h5>
+                        <h5 class="text-sm font-semibold text-purple-700">AI 洞察
+                          <span x-show="v.ai_analysis?.comments_included === false" class="ml-2 text-[10px] font-normal text-amber-500">(未包含评论数据)</span>
+                        </h5>
                         <span class="text-[10px] text-gray-400" x-text="v.ai_analysis?.created_at || ''"></span>
                       </div>
                       <div class="prose prose-sm max-w-none text-gray-700 text-sm leading-relaxed"
@@ -1505,11 +1521,17 @@ function app() {
     },
     async toggleFavorite(v) {
       if (this.isFavorited(v.aweme_id)) {
+        const removed = this.favoriteVideos.find(f => f.aweme_id === v.aweme_id);
         this.favoriteVideos = this.favoriteVideos.filter(f => f.aweme_id !== v.aweme_id);
-        try { await this.api('DELETE', '/favorites/' + v.aweme_id); } catch (e) { /* ignore */ }
+        try { await this.api('DELETE', '/favorites/' + v.aweme_id); } catch (e) {
+          if (removed) this.favoriteVideos.unshift(removed);
+        }
       } else {
-        this.favoriteVideos.unshift({ ...v, _fav_at: new Date().toLocaleString('zh-CN') });
-        try { await this.api('POST', '/favorites', v); } catch (e) { /* ignore */ }
+        const item = { ...v, _fav_at: new Date().toLocaleString('zh-CN') };
+        this.favoriteVideos.unshift(item);
+        try { await this.api('POST', '/favorites', v); } catch (e) {
+          this.favoriteVideos = this.favoriteVideos.filter(f => f.aweme_id !== v.aweme_id);
+        }
       }
     },
     // AI 洞察
@@ -2157,6 +2179,60 @@ function app() {
     },
 
     // 工具函数
+    // ---- 导出 ----
+    _videoToMarkdown(v) {
+      const n = (num) => { if (num >= 1e8) return (num / 1e8).toFixed(1) + '亿'; if (num >= 1e4) return (num / 1e4).toFixed(1) + '万'; return String(num || 0); };
+      const r = (rate) => ((rate || 0) * 100).toFixed(2) + '%';
+      const dur = (s) => s > 0 ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : '';
+
+      let md = `## ${v.desc || '(无描述)'}\n\n`;
+      md += `- **作者**：${v.author_nickname || '未知'} (@${v.author_unique_id || ''})\n`;
+      if (v.create_time) md += `- **发布时间**：${v.create_time}\n`;
+      if (v.duration > 0) md += `- **时长**：${dur(v.duration)}\n`;
+      if (v._fav_at) md += `- **收藏时间**：${v._fav_at}\n`;
+      if (v.tags) md += `- **标签**：${v.tags.split(',').map(t => '#' + t.trim()).join(' ')}\n`;
+      md += `\n### 数据表现\n\n`;
+      md += `| 播放 | 点赞 | 评论 | 收藏 | 转发 |\n`;
+      md += `| --- | --- | --- | --- | --- |\n`;
+      md += `| ${n(v.play_count)} | ${n(v.digg_count)} | ${n(v.comment_count)} | ${n(v.collect_count)} | ${n(v.share_count)} |\n\n`;
+      md += `- **收藏率**：${r(v.collect_rate)}`;
+      if (v.engagement_rate > 0) md += ` / **互动率**：${r(v.engagement_rate)}`;
+      md += `\n`;
+
+      if (v.ai_analysis?.result) {
+        md += `\n### AI 洞察\n\n`;
+        if (v.ai_analysis.created_at) md += `> 分析时间：${v.ai_analysis.created_at}\n\n`;
+        md += v.ai_analysis.result + '\n';
+      }
+      if (v.first5s_analysis?.result) {
+        md += `\n### 前5秒留存分析\n\n`;
+        if (v.first5s_analysis.created_at) md += `> 分析时间：${v.first5s_analysis.created_at}\n\n`;
+        md += v.first5s_analysis.result + '\n';
+      }
+      return md;
+    },
+    _downloadMarkdown(filename, content) {
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    },
+    exportFavorite(v) {
+      const md = this._videoToMarkdown(v);
+      const name = (v.author_nickname || 'video') + '_' + (v.aweme_id || 'export');
+      this._downloadMarkdown(name + '.md', md);
+    },
+    exportAllFavorites() {
+      const date = new Date().toISOString().slice(0, 10);
+      let md = `# 爆款收藏导出\n\n`;
+      md += `> 导出时间：${new Date().toLocaleString('zh-CN')} / 共 ${this.favoriteVideos.length} 条\n\n---\n\n`;
+      this.favoriteVideos.forEach((v, i) => {
+        md += this._videoToMarkdown(v);
+        if (i < this.favoriteVideos.length - 1) md += '\n---\n\n';
+      });
+      this._downloadMarkdown(`爆款收藏_${date}.md`, md);
+    },
     fmtNum(n) {
       if (n >= 1e8) return (n / 1e8).toFixed(1) + '亿';
       if (n >= 1e4) return (n / 1e4).toFixed(1) + '万';
