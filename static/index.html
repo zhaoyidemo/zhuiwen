@@ -334,9 +334,10 @@
                     <p class="text-xs text-gray-400">@<span x-text="acc.unique_id"></span></p>
                   </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                <div class="grid grid-cols-4 gap-2 text-center text-xs mb-3">
                   <div><p class="font-semibold text-gray-700" x-text="fmtNum(acc.follower_count)"></p><p class="text-gray-400">粉丝</p></div>
                   <div><p class="font-semibold text-gray-700" x-text="acc.video_count"></p><p class="text-gray-400">作品</p></div>
+                  <div><p class="font-semibold" :class="acc._synced ? (acc._synced === acc.video_count ? 'text-emerald-500' : 'text-amber-500') : 'text-gray-300'" x-text="acc._synced || '-'"></p><p class="text-gray-400">已同步</p></div>
                   <div><p class="font-semibold text-gray-700" x-text="fmtNum(acc.total_favorited)"></p><p class="text-gray-400">获赞</p></div>
                 </div>
                 <!-- 同步后的汇总数据 -->
@@ -349,7 +350,7 @@
                 <div class="flex items-center justify-between">
                   <span class="text-[10px] px-2 py-0.5 rounded"
                     :class="acc.category==='竞品' ? 'bg-orange-50 text-orange-500' : 'bg-blue-50 text-blue-500'"
-                    x-text="acc.category + (acc._synced ? ' · ' + acc._synced + '条' : '') + (acc._lastSync ? ' · ' + acc._lastSync : '')"></span>
+                    x-text="acc.category + (acc._lastSync ? ' · ' + acc._lastSync : '')"></span>
                   <div class="flex items-center gap-2">
                     <button x-show="acc._synced" @click.stop="loadXingtu(acc, true)" :disabled="xingtuLoading"
                       class="flex items-center gap-1 text-xs text-purple-500 hover:text-purple-600 disabled:text-gray-300">
