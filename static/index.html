@@ -1270,7 +1270,7 @@ function app() {
       // 统一响应格式：{code, data, message}
       if (json.code !== undefined) {
         if (json.code !== 0) throw new Error(json.message || '请求失败');
-        return json.data;
+        return json.data ?? null;
       }
       // 兼容旧格式
       if (!res.ok) throw new Error(json.detail || json.message || '请求失败');
@@ -1442,24 +1442,14 @@ function app() {
       try {
         const result = await this.api('POST', '/accounts/' + acc.sec_user_id + '/sync');
         if (result.account) Object.assign(acc, result.account);
-        // 后台同步中，轮询等待视频数据就绪
-        this.accountError = '视频同步中，请稍候...';
-        const prevCount = this.competitorVideos.length;
-        for (let i = 0; i < 60; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          const dbVideos = await this.api('GET', '/accounts/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
-          const newCount = (dbVideos.videos || []).length;
-          this.accountError = `视频同步中... ${newCount} 条`;
-          if (newCount > prevCount || (i > 5 && newCount > 0)) {
-            this.competitorVideos = dbVideos.videos || [];
-            break;
-          }
-          if (i === 59) this.competitorVideos = dbVideos.videos || [];
+        if (result.task_id) {
+          await this.pollTask(result.task_id, p => this.accountError = p, 180);
         }
+        const dbVideos = await this.api('GET', '/accounts/' + acc.sec_user_id + '/videos?sort_by=collect_rate&order=desc');
+        this.competitorVideos = dbVideos.videos || [];
         this.selectedAccount = acc;
         acc._lastSync = new Date().toLocaleString('zh-CN');
         this.updateAccountStats(acc);
-        this.sortVideos();
         this.accountError = '';
       } catch (e) { this.accountError = e.message; }
       this.syncingId = null;
@@ -1512,11 +1502,15 @@ function app() {
       }
     },
     // AI 洞察
+    _aiPromptsLoading: false,
     async loadAiPrompts() {
+      if (this._aiPromptsLoading) return;
+      this._aiPromptsLoading = true;
       try {
         const res = await this.api('GET', '/favorites/prompts');
         this.aiPrompts = res.prompts || [];
       } catch (e) { /* ignore */ }
+      this._aiPromptsLoading = false;
     },
     async deleteAiPrompt(name) {
       try {
@@ -1964,16 +1958,13 @@ function app() {
       if (!this.selectedGuest || this.guestSearching) return;
       this.guestSearching = true; this.guestError = '';
       try {
-        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/search', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/search', {
           extra_keywords: this.extraSearchKeywords,
         });
-        // 后台搜索中，轮询等待素材出现
-        const prevCount = this.guestMaterials.length;
-        for (let i = 0; i < 40; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          await this.loadGuestMaterials(this.selectedGuest.id);
-          if (this.guestMaterials.length > prevCount) break;
+        if (res?.task_id) {
+          await this.pollTask(res.task_id, p => this.guestError = p, 180);
         }
+        await this.loadGuestMaterials(this.selectedGuest.id);
       } catch (e) { this.guestError = '搜索失败: ' + e.message; }
       this.guestSearching = false;
     },
@@ -2005,16 +1996,13 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI策划专员');
-        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/plan', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/plan', {
           prompt: p?.content || '',
         });
-        // 后台分析中，轮询等待结果
-        const prevCount = this.guestAnalyses.length;
-        for (let i = 0; i < 40; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          await this.loadGuestAnalyses(this.selectedGuest.id);
-          if (this.guestAnalyses.length > prevCount) break;
+        if (res?.task_id) {
+          await this.pollTask(res.task_id, p => this.guestError = p);
         }
+        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = '分析失败: ' + e.message; }
       this.guestAnalyzing = null;
     },
@@ -2034,15 +2022,13 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI热点编导');
-        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/trending', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/trending', {
           prompt: p?.content || '',
         });
-        const prevCount = this.guestAnalyses.length;
-        for (let i = 0; i < 40; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          await this.loadGuestAnalyses(this.selectedGuest.id);
-          if (this.guestAnalyses.length > prevCount) break;
+        if (res?.task_id) {
+          await this.pollTask(res.task_id, p => this.guestError = p);
         }
+        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI热点编导失败: ' + e.message; }
       this.guestTrendingReviewing = false;
     },
@@ -2052,15 +2038,13 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI内容编导');
-        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/content', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/content', {
           prompt: p?.content || '',
         });
-        const prevCount = this.guestAnalyses.length;
-        for (let i = 0; i < 40; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          await this.loadGuestAnalyses(this.selectedGuest.id);
-          if (this.guestAnalyses.length > prevCount) break;
+        if (res?.task_id) {
+          await this.pollTask(res.task_id, p => this.guestError = p);
         }
+        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI内容编导失败: ' + e.message; }
       this.guestFollowingUp = false;
     },
@@ -2070,17 +2054,32 @@ function app() {
       try {
         if (!this.aiPrompts.length) await this.loadAiPrompts();
         const p = this.aiPrompts.find(p => p.name === 'AI切片编导');
-        await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/clip', {
+        const res = await this.api('POST', '/guests/' + this.selectedGuest.id + '/actions/clip', {
           prompt: p?.content || '',
         });
-        const prevCount = this.guestAnalyses.length;
-        for (let i = 0; i < 40; i++) {
-          await new Promise(r => setTimeout(r, 3000));
-          await this.loadGuestAnalyses(this.selectedGuest.id);
-          if (this.guestAnalyses.length > prevCount) break;
+        if (res?.task_id) {
+          await this.pollTask(res.task_id, p => this.guestError = p);
         }
+        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI切片编导失败: ' + e.message; }
       this.guestClipReviewing = false;
+    },
+    async pollTask(taskId, onProgress = null, maxWait = 120) {
+      // 通用 task 轮询：每3秒查一次，直到 done/failed 或超时
+      const maxPolls = Math.ceil(maxWait / 3);
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        try {
+          const task = await this.api('GET', '/tasks/' + taskId);
+          if (onProgress && task.progress) onProgress(task.progress);
+          if (task.status === 'done') return task;
+          if (task.status === 'failed') throw new Error(task.error || '任务失败');
+        } catch (e) {
+          if (e.message === '任务不存在') continue; // 任务刚创建可能还没注册
+          throw e;
+        }
+      }
+      throw new Error('任务超时');
     },
     async sendGuestChat() {
       if (!this.selectedGuest || !this.guestChatInput.trim() || this.guestChatLoading) return;
