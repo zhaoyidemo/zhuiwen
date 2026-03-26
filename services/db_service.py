@@ -29,22 +29,26 @@ async def get_accounts(db: AsyncSession) -> list[dict]:
     accounts = []
     for acc in result.scalars().all():
         d = _account_to_dict(acc)
-        # 单独查询视频统计
+        # 总视频数（含已删除）
+        total = await db.execute(
+            select(func.count(Video.id)).where(Video.account_sec_user_id == acc.sec_user_id)
+        )
+        d["_synced"] = total.scalar() or 0
+        # 统计指标只算 active 视频（排除已删除）
+        active_filter = (Video.account_sec_user_id == acc.sec_user_id) & ((Video.status == "active") | (Video.status == None))
         stats = await db.execute(
             select(
-                func.count(Video.id),
                 func.avg(Video.collect_rate),
                 func.max(Video.collect_rate),
                 func.avg(Video.engagement_rate),
                 func.max(Video.engagement_rate),
-            ).where(Video.account_sec_user_id == acc.sec_user_id)
+            ).where(active_filter)
         )
         row = stats.one()
-        d["_synced"] = row[0] or 0
-        d["_avgCollectRate"] = round(float(row[1] or 0), 6)
-        d["_topCollectRate"] = round(float(row[2] or 0), 6)
-        d["_avgEngagementRate"] = round(float(row[3] or 0), 6)
-        d["_topEngagementRate"] = round(float(row[4] or 0), 6)
+        d["_avgCollectRate"] = round(float(row[0] or 0), 6)
+        d["_topCollectRate"] = round(float(row[1] or 0), 6)
+        d["_avgEngagementRate"] = round(float(row[2] or 0), 6)
+        d["_topEngagementRate"] = round(float(row[3] or 0), 6)
         accounts.append(d)
     return accounts
 

@@ -1404,11 +1404,12 @@ function app() {
     // 更新账号汇总数据
     updateAccountStats(acc) {
       const vids = this.competitorVideos;
+      const active = vids.filter(v => v.status !== 'deleted');
       acc._synced = vids.length;
-      acc._avgCollectRate = vids.length ? vids.reduce((s, v) => s + (v.collect_rate || 0), 0) / vids.length : 0;
-      acc._topCollectRate = vids.length ? Math.max(...vids.map(v => v.collect_rate || 0)) : 0;
-      acc._avgEngagementRate = vids.length ? vids.reduce((s, v) => s + (v.engagement_rate || 0), 0) / vids.length : 0;
-      acc._topEngagementRate = vids.length ? Math.max(...vids.map(v => v.engagement_rate || 0)) : 0;
+      acc._avgCollectRate = active.length ? active.reduce((s, v) => s + (v.collect_rate || 0), 0) / active.length : 0;
+      acc._topCollectRate = active.length ? Math.max(...active.map(v => v.collect_rate || 0)) : 0;
+      acc._avgEngagementRate = active.length ? active.reduce((s, v) => s + (v.engagement_rate || 0), 0) / active.length : 0;
+      acc._topEngagementRate = active.length ? Math.max(...active.map(v => v.engagement_rate || 0)) : 0;
     },
 
     // 选中账号 → 从数据库加载视频
