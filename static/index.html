@@ -1996,9 +1996,10 @@ function app() {
         });
         if (res?.task_id) {
           await this.pollTask(res.task_id, p => this.guestError = p, 3600);
+          this.guestError = '';
         }
-        await this.loadGuestMaterials(this.selectedGuest.id);
       } catch (e) { this.guestError = '搜索失败: ' + e.message; }
+      await this.loadGuestMaterials(this.selectedGuest.id);
       this.guestSearching = false;
     },
     async addGuestMaterial() {
@@ -2034,10 +2035,11 @@ function app() {
         });
         if (res?.task_id) {
           await this.pollTask(res.task_id, p => this.guestError = p);
+          this.guestError = '';
         }
-        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = '分析失败: ' + e.message; }
-      this.guestAnalyzing = null;
+      await this.loadGuestAnalyses(this.selectedGuest.id);
+      this.guestAnalyzing = false;
     },
     async deleteGuestAnalysis(aid) {
       if (!this.selectedGuest) return;
@@ -2060,9 +2062,10 @@ function app() {
         });
         if (res?.task_id) {
           await this.pollTask(res.task_id, p => this.guestError = p);
+          this.guestError = '';
         }
-        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI热点编导失败: ' + e.message; }
+      await this.loadGuestAnalyses(this.selectedGuest.id);
       this.guestTrendingReviewing = false;
     },
     async runDeepFollowup() {
@@ -2076,9 +2079,10 @@ function app() {
         });
         if (res?.task_id) {
           await this.pollTask(res.task_id, p => this.guestError = p);
+          this.guestError = '';
         }
-        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI内容编导失败: ' + e.message; }
+      await this.loadGuestAnalyses(this.selectedGuest.id);
       this.guestFollowingUp = false;
     },
     async runClipReview() {
@@ -2092,9 +2096,10 @@ function app() {
         });
         if (res?.task_id) {
           await this.pollTask(res.task_id, p => this.guestError = p);
+          this.guestError = '';
         }
-        await this.loadGuestAnalyses(this.selectedGuest.id);
       } catch (e) { this.guestError = 'AI切片编导失败: ' + e.message; }
+      await this.loadGuestAnalyses(this.selectedGuest.id);
       this.guestClipReviewing = false;
     },
     async pollTask(taskId, onProgress = null, maxWait = 600) {
