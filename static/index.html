@@ -1518,7 +1518,7 @@ function app() {
       if (this._aiPromptsLoading) return;
       this._aiPromptsLoading = true;
       try {
-        const res = await this.api('GET', '/favorites/prompts');
+        const res = await this.api('GET', '/prompts');
         this.aiPrompts = res.prompts || [];
       } catch (e) { /* ignore */ }
       this._aiPromptsLoading = false;
@@ -1532,7 +1532,7 @@ function app() {
     async saveAiPrompt(name, content) {
       if (!name || !content) return;
       try {
-        await this.api('POST', '/favorites/prompts', { name, content });
+        await this.api('POST', '/prompts', { name, content });
         await this.loadAiPrompts();
       } catch (e) { /* ignore */ }
     },

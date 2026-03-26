@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from config import settings
-    from routers import video, account, analysis, favorite, guest
+    from routers import video, account, analysis, favorite, guest, prompts
     from models.api_models import PasswordRequest, ok, fail
     from services import task_service, db_service
     from database import init_db
@@ -205,7 +205,7 @@ async def self_test():
         ("GET", "/api/accounts", None),
         ("GET", "/api/videos/history", None),
         ("GET", "/api/favorites", None),
-        ("GET", "/api/favorites/prompts", None),
+        ("GET", "/api/prompts", None),
         ("GET", "/api/guests", None),
     ]
 
@@ -247,6 +247,7 @@ app.include_router(video.router)
 app.include_router(account.router)
 app.include_router(analysis.router)
 app.include_router(favorite.router)
+app.include_router(prompts.router)
 app.include_router(guest.router)
 
 

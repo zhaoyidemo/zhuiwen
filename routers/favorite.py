@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.api_models import PromptSaveRequest, AnalyzeRequest, ok
+from models.api_models import AnalyzeRequest, ok
 from services import tikhub_service, db_service, ai_service, video_processor
 from database import get_db
 
@@ -126,36 +126,3 @@ async def analyze_first5s(aweme_id: str, body: AnalyzeRequest, db: AsyncSession 
         logger.warning(f"保存前5秒分析结果失败: {e}")
 
     return ok({**analysis, "frames": frames})
-
-
-# ---- 提示词管理 ----
-
-@router.get("/prompts",
-    summary="提示词列表",
-    description="获取所有 AI 提示词（含系统内置默认模板和用户自定义）",
-    tags=["提示词管理"])
-async def list_prompts(db: AsyncSession = Depends(get_db)):
-    db_prompts = await db_service.get_ai_prompts(db)
-    db_names = {p["name"] for p in db_prompts}
-    for name, content in ai_service.DEFAULT_PROMPTS.items():
-        if name not in db_names:
-            db_prompts.append({"id": None, "name": name, "content": content, "is_default": True})
-    return ok({"prompts": db_prompts})
-
-
-@router.post("/prompts",
-    summary="保存提示词",
-    description="创建或更新一个提示词（按名称去重）",
-    tags=["提示词管理"])
-async def save_prompt(body: PromptSaveRequest, db: AsyncSession = Depends(get_db)):
-    result = await db_service.upsert_ai_prompt(db, body.name, body.content)
-    return ok(result)
-
-
-@router.delete("/prompts/{name}",
-    summary="删除提示词",
-    description="删除指定名称的提示词",
-    tags=["提示词管理"])
-async def delete_prompt(name: str, db: AsyncSession = Depends(get_db)):
-    await db_service.delete_ai_prompt(db, name)
-    return ok()
