@@ -629,10 +629,11 @@
             <div class="space-y-3">
               <template x-for="(v, idx) in competitorVideos" :key="v.aweme_id">
                 <div class="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow"
-                  :class="v.collect_rate >= 0.03 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200'">
+                  :class="[v.collect_rate >= 0.03 ? 'border-amber-300 ring-2 ring-amber-100' : 'border-gray-200', v.status === 'deleted' ? 'opacity-50' : '']">
                   <div class="flex">
                     <div class="w-32 h-24 shrink-0 bg-gray-100 relative" x-show="v.cover_url">
                       <img :src="v.cover_url" class="w-full h-full object-cover" loading="lazy">
+                      <span x-show="v.status === 'deleted'" class="absolute top-1 left-1 px-1.5 py-0.5 bg-red-500 text-white text-[9px] rounded font-medium">已删除</span>
                       <span class="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 rounded" x-show="v.duration" x-text="fmtDuration(v.duration)"></span>
                       <span class="absolute top-1 left-1 bg-black/50 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full" x-text="idx + 1"></span>
                     </div>

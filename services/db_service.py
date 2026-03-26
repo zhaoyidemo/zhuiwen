@@ -83,6 +83,23 @@ async def upsert_videos_batch(db: AsyncSession, sec_user_id: str, videos: list[d
     await db.commit()
 
 
+async def mark_deleted_videos(db: AsyncSession, sec_user_id: str, active_aweme_ids: set[str]) -> int:
+    """将数据库中有但抖音上已不存在的视频标记为 deleted，已存在的恢复为 active"""
+    result = await db.execute(
+        select(Video.aweme_id, Video.status).where(Video.account_sec_user_id == sec_user_id)
+    )
+    marked = 0
+    for row in result.all():
+        aweme_id, current_status = row[0], row[1] if len(row) > 1 else "active"
+        if aweme_id not in active_aweme_ids and current_status != "deleted":
+            await db.execute(update(Video).where(Video.aweme_id == aweme_id).values(status="deleted"))
+            marked += 1
+        elif aweme_id in active_aweme_ids and current_status == "deleted":
+            await db.execute(update(Video).where(Video.aweme_id == aweme_id).values(status="active"))
+    await db.commit()
+    return marked
+
+
 async def get_account_videos(
     db: AsyncSession, sec_user_id: str, sort_by: str = "create_time", order: str = "desc"
 ) -> list[dict]:
@@ -380,6 +397,7 @@ def _video_to_dict(obj: Video) -> dict:
         "author_avatar": obj.author_avatar,
         "author_unique_id": obj.author_unique_id,
         "author_follower_count": obj.author_follower_count,
+        "status": getattr(obj, "status", "active") or "active",
         "created_at": str(obj.created_at) if obj.created_at else "",
         "updated_at": str(obj.updated_at) if obj.updated_at else "",
     }

@@ -90,7 +90,11 @@ async def sync_account_videos(sec_user_id: str, db: AsyncSession = Depends(get_d
             task_service.update_progress(task_id, f"正在写入数据库（{len(videos_data)}条）...")
             async with async_session() as bg_db:
                 await db_service.upsert_videos_batch(bg_db, sec_user_id, videos_data)
-            task_service.complete_task(task_id, {"total": len(videos_data)})
+            # 标记已删除/隐藏的视频
+            active_ids = {v.get("aweme_id", "") for v in videos_data if v.get("aweme_id")}
+            async with async_session() as bg_db:
+                marked = await db_service.mark_deleted_videos(bg_db, sec_user_id, active_ids)
+            task_service.complete_task(task_id, {"total": len(videos_data), "marked_deleted": marked})
             logger.info(f"同步完成: {len(videos_data)} 条视频")
             try:
                 if videos:

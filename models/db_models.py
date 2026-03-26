@@ -64,6 +64,7 @@ class Video(Base):
     author_avatar: Mapped[str] = mapped_column(Text, default="")
     author_unique_id: Mapped[str] = mapped_column(String(128), default="")
     author_follower_count: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[str] = mapped_column(String(32), default="active")  # active / deleted
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 
