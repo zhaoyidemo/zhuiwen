@@ -203,28 +203,54 @@ async def self_test():
     headers = {"X-Site-Password": settings.SITE_PASSWORD, "Content-Type": "application/json"}
 
     tests = [
-        ("GET", "/health", None),
-        ("GET", "/api/accounts", None),
-        ("GET", "/api/videos/history", None),
-        ("GET", "/api/favorites", None),
-        ("GET", "/api/prompts", None),
-        ("GET", "/api/guests", None),
+        # 全局
+        ("GET", "/health", None, 200),
+        # 视频
+        ("GET", "/api/videos/history", None, 200),
+        # 账号
+        ("GET", "/api/accounts", None, 200),
+        # 收藏
+        ("GET", "/api/favorites", None, 200),
+        # 提示词
+        ("GET", "/api/prompts", None, 200),
+        # 嘉宾
+        ("GET", "/api/guests", None, 200),
+        # 任务（不存在的 task_id 应返回 404）
+        ("GET", "/api/tasks/t_nonexistent", None, 404),
+        # 认证拦截（无密码应返回 401）
+        ("GET_NO_AUTH", "/api/guests", None, 401),
     ]
+
+    # 动态添加：如果有嘉宾，测试素材和分析端点
+    try:
+        async with httpx.AsyncClient(timeout=10) as pre_client:
+            resp = await pre_client.get(f"{base}/api/guests", headers=headers)
+            guests_data = resp.json().get("data", {}).get("guests", [])
+            if guests_data:
+                gid = guests_data[0]["id"]
+                tests.append(("GET", f"/api/guests/{gid}/materials", None, 200))
+                tests.append(("GET", f"/api/guests/{gid}/analyses", None, 200))
+                tests.append(("GET", f"/api/guests/{gid}/export", None, 200))
+    except Exception:
+        pass
 
     results = []
     async with httpx.AsyncClient(timeout=10) as client:
-        for method, path, body in tests:
+        for method, path, body, expected_status in tests:
             try:
-                if method == "GET":
-                    resp = await client.get(f"{base}{path}", headers=headers)
+                req_headers = headers if not method.endswith("_NO_AUTH") else {"Content-Type": "application/json"}
+                actual_method = method.replace("_NO_AUTH", "")
+                if actual_method == "GET":
+                    resp = await client.get(f"{base}{path}", headers=req_headers)
                 else:
-                    resp = await client.post(f"{base}{path}", headers=headers, json=body)
+                    resp = await client.post(f"{base}{path}", headers=req_headers, json=body)
 
                 data = resp.json()
-                passed = resp.status_code == 200 and data.get("code", -1) == 0
+                passed = resp.status_code == expected_status
                 results.append({
-                    "endpoint": f"{method} {path}",
+                    "endpoint": f"{actual_method} {path}",
                     "status": resp.status_code,
+                    "expected": expected_status,
                     "result": "pass" if passed else "fail",
                     "message": data.get("message", ""),
                 })
@@ -232,6 +258,7 @@ async def self_test():
                 results.append({
                     "endpoint": f"{method} {path}",
                     "status": 0,
+                    "expected": expected_status,
                     "result": "error",
                     "message": str(e),
                 })
