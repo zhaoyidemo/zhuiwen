@@ -1995,7 +1995,7 @@ function app() {
           extra_keywords: this.extraSearchKeywords,
         });
         if (res?.task_id) {
-          await this.pollTask(res.task_id, p => this.guestError = p, 180);
+          await this.pollTask(res.task_id, p => this.guestError = p, 3600);
         }
         await this.loadGuestMaterials(this.selectedGuest.id);
       } catch (e) { this.guestError = '搜索失败: ' + e.message; }
@@ -2097,7 +2097,7 @@ function app() {
       } catch (e) { this.guestError = 'AI切片编导失败: ' + e.message; }
       this.guestClipReviewing = false;
     },
-    async pollTask(taskId, onProgress = null, maxWait = 120) {
+    async pollTask(taskId, onProgress = null, maxWait = 600) {
       // 通用 task 轮询：每3秒查一次，直到 done/failed 或超时
       const maxPolls = Math.ceil(maxWait / 3);
       for (let i = 0; i < maxPolls; i++) {
