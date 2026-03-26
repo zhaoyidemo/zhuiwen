@@ -653,7 +653,7 @@ async def analyze_guest(
     try:
         message = client.messages.create(
             model="claude-sonnet-4-6-20250414",
-            max_tokens=16000,
+            max_tokens=50000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_text}],
         )
