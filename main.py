@@ -197,7 +197,9 @@ async def diagnostics():
 async def self_test():
     import httpx
 
-    base = "http://127.0.0.1:8080"
+    import os
+    port = os.environ.get("PORT", "8080")
+    base = f"http://127.0.0.1:{port}"
     headers = {"X-Site-Password": settings.SITE_PASSWORD, "Content-Type": "application/json"}
 
     tests = [
