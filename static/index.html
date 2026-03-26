@@ -1458,12 +1458,20 @@ function app() {
     },
 
     // 逐批补充播放量（每次2个，后端自动更新数据库）
+    // 无播放量的 + 15天内的视频都会更新
     async fillPlayCount() {
       if (this.fillingPlay || !this.competitorVideos.length || !this.selectedAccount) return;
       this.fillingPlay = true;
-      const todo = this.competitorVideos.filter(v => !v.play_count && v.aweme_id);
+      const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, '-');
+      const todo = this.competitorVideos.filter(v => {
+        if (!v.aweme_id || v.status === 'deleted') return false;
+        if (!v.play_count) return true;  // 无播放量，必须获取
+        // 15天内的视频，更新播放量
+        if (v.create_time && v.create_time >= fifteenDaysAgo) return true;
+        return false;
+      });
       const total = todo.length;
-      if (!total) { this.fillProgress = `全部 ${this.competitorVideos.length} 条已有播放量`; this.fillingPlay = false; return; }
+      if (!total) { this.fillProgress = `全部视频播放量已是最新`; this.fillingPlay = false; return; }
       let done = 0, filled = 0;
       for (let i = 0; i < total; i += 2) {
         const batch = todo.slice(i, i + 2);
